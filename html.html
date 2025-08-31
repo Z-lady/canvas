@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>优化布局流程图</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #f5f6f8;
+            font-family: 'Microsoft YaHei', sans-serif;
+        }
+
+        canvas {
+            border: 1px solid #ddd;
+            background: white;
+            cursor: pointer;
+        }
+
+        .info {
+            margin-bottom: 10px;
+            color: #666;
+            font-size: 14px;
+        }
+    </style>
+</head>
+
+<body>
+    <div style="margin: auto; width: 1000px;">
+        <div class="info">点击带有 + 号的节点可以展开下级流程</div>
+        <canvas id="flowchart" width="1000" height="700"></canvas>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('flowchart');
+        const ctx = canvas.getContext('2d');
+
+        // 节点状态
+        const NodeStatus = {
+            PENDING: 'pending',
+            PROCESSING: 'processing',
+            COMPLETED: 'completed',
+            ERROR: 'error'
+        };
+
+        // 流程图数据结构 - 简化版本
+        const flowchartData = {
+            nodes: [
+                // 第一级 - 开始节点
+                {
+                    id: 'start',
+                    x: 400, y: 50,
+                    width: 100, height: 40,
+                    text: '开始流程',
+                    status: NodeStatus.COMPLETED,
+                    level: 1,
+                    visible: true,
+                    hasChildren: true,
+                    expanded: true
+                },
+
+                // 第二级
+                {
+                    id: 'check1',
+                    x: 150, y: 180,
+                    width: 100, height: 50,
+                    text: '条件检查',
+                    status: NodeStatus.COMPLETED,
+                    level: 2,
+                    visible: true,
+                    hasChildren: true,
+                    expanded: true,
+                    parent: 'start'
+                },
+                {
+                    id: 'process1',
+                    x: 400, y: 180,
+                    width: 100, height: 50,
+                    text: '业务处理',
+                    status: NodeStatus.PROCESSING,
+                    level: 2,
+                    visible: true,
+                    hasChildren: true,
+                    expanded: true,
+                    parent: 'start'
+                },
+                {
+                    id: 'review1',
+                    x: 650, y: 180,
+                    width: 100, height: 50,
+                    text: '审核流程',
+                    status: NodeStatus.PENDING,
+                    level: 2,
+                    visible: true,
+                    hasChildren: true,
+                    expanded: true,
+                    parent: 'start'
+                },
+
+                // 第三级
+                {
+                    id: 'check1_1',
+                    x: 155, y: 320,
+                    width: 90, height: 40,
+                    text: '数据验证',
+                    status: NodeStatus.COMPLETED,
+                    level: 3,
+                    visible: true,
+                    hasChildren: false,
+                    parent: 'check1',
+                    pointsToEnd: true
+                },
+                {
+                    id: 'process1_1',
+                    x: 405, y: 320,
+                    width: 90, height: 40,
+                    text: '数据处理',
+                    status: NodeStatus.PROCESSING,
+                    level: 3,
+                    visible: true,
+                    hasChildren: true,
+                    expanded: true,
+                    parent: 'process1'
+                },
+                {
+                    id: 'review1_1',
+                    x: 655, y: 320,
+                    width: 90, height: 40,
+                    text: '初审',
+                    status: NodeStatus.PENDING,
+                    level: 3,
+                    visible: true,
+                    hasChildren: false,
+                    parent: 'review1',
+                    pointsToEnd: true
+                },
+
+                // 第四级
+                {
+                    id: 'process1_1_1',
+                    x: 410, y: 460,
+                    width: 80, height: 35,
+                    text: '数据清洗',
+                    status: NodeStatus.PROCESSING,
+                    level: 4,
+                    visible: true,
+                    hasChildren: false,
+                    parent: 'process1_1',
+                    pointsToEnd: true
+                },
+
+                // // 结束节点
+                // {
+                //     id: 'end',
+                //     x: 400, y: 580,
+                //     width: 100, height: 40,
+                //     text: '流程结束',
+                //     status: NodeStatus.PENDING,
+                //     level: 5,
+                //     visible: true,
+                //     hasChildren: false,
+                //     isEndNode: true
+                // }
+            ]
+        };
+
+        // 颜色配置
+        const colors = {
+            [NodeStatus.PENDING]: { bg: '#e2e8f0', border: '#94a3b8', text: '#475569' },
+            [NodeStatus.PROCESSING]: { bg: '#fef3c7', border: '#f59e0b', text: '#92400e' },
+            [NodeStatus.COMPLETED]: { bg: '#d1fae5', border: '#10b981', text: '#065f46' },
+            [NodeStatus.ERROR]: { bg: '#fee2e2', border: '#ef4444', text: '#991b1b' }
+        };
+
+        // 绘制圆角矩形
+        function drawRoundedRect(ctx, x, y, width, height, radius) {
+            ctx.beginPath();
+            ctx.moveTo(x + radius, y);
+            ctx.lineTo(x + width - radius, y);
+            ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+            ctx.lineTo(x + width, y + height - radius);
+            ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+            ctx.lineTo(x + radius, y + height);
+            ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+            ctx.lineTo(x, y + radius);
+            ctx.quadraticCurveTo(x, y, x + radius, y);
+            ctx.closePath();
+        }
+
+        // 检查节点是否重叠
+        function checkNodeOverlap(node1, node2) {
+            return !(node1.x + node1.width < node2.x ||
+                node2.x + node2.width < node1.x ||
+                node1.y + node1.height < node2.y ||
+                node2.y + node2.height < node1.y);
+        }
+
+        // 自动调整节点位置避免重叠
+        function adjustNodePositions() {
+            const visibleNodes = flowchartData.nodes.filter(n => n.visible);
+            const minDistance = 20; // 最小间距
+
+            for (let i = 0; i < visibleNodes.length; i++) {
+                for (let j = i + 1; j < visibleNodes.length; j++) {
+                    const node1 = visibleNodes[i];
+                    const node2 = visibleNodes[j];
+
+                    if (checkNodeOverlap(node1, node2)) {
+                        // 如果重叠，调整位置
+                        const centerX1 = node1.x + node1.width / 2;
+                        const centerX2 = node2.x + node2.width / 2;
+
+                        if (centerX1 < centerX2) {
+                            node2.x = node1.x + node1.width + minDistance;
+                        } else {
+                            node1.x = node2.x + node2.width + minDistance;
+                        }
+                    }
+                }
+            }
+        }
+
+        // 绘制节点
+        function drawNode(node) {
+            if (!node.visible) return;
+
+            const color = colors[node.status];
+
+            ctx.save();
+
+            // 绘制圆角矩形
+            drawRoundedRect(ctx, node.x, node.y, node.width, node.height, 8);
+
+            // 填充背景
+            ctx.fillStyle = color.bg;
+            ctx.fill();
+
+            // // 绘制边框
+            ctx.strokeStyle = color.border;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // 绘制文本
+            ctx.fillStyle = color.text;
+            ctx.font = '12px Microsoft YaHei';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            // 处理多行文本
+            const lines = node.text.split('\n');
+            const lineHeight = 14;
+            const startY = node.y + node.height / 2 - (lines.length - 1) * lineHeight / 2;
+
+            lines.forEach((line, index) => {
+                ctx.fillText(line, node.x + node.width / 2, startY + index * lineHeight);
+            });
+
+            // 绘制展开/收起按钮
+            if (node.hasChildren) {
+                const btnX = node.x + node.width - 15;
+                const btnY = node.y + 8;
+
+                // 检查是否存在结束节点
+                const hasEndNode = flowchartData.nodes.some(n => n.isEndNode && n.visible);
+
+                // 绘制圆形按钮背景
+                ctx.fillStyle = node.expanded ? '#10b981' : '#6b7280';
+                ctx.beginPath();
+                ctx.arc(btnX, btnY, 8, 0, Math.PI * 2);
+                ctx.fill();
+
+                // 绘制 + 或 - 号
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(btnX - 4, btnY);
+                ctx.lineTo(btnX + 4, btnY);
+
+                // 只有在没有结束节点或节点未展开时才绘制垂直线（显示+号或-号）
+                if (!hasEndNode && !node.expanded) {
+                    ctx.moveTo(btnX, btnY - 4);
+                    ctx.lineTo(btnX, btnY + 4);
+                } else if (hasEndNode && node.expanded) {
+                    // 如果有结束节点且节点已展开，不绘制垂直线（只显示水平线，表示无法收起）
+                    // 水平线已经在上面绘制了
+                } else if (!node.expanded) {
+                    // 如果没有结束节点且节点未展开，绘制+号
+                    ctx.moveTo(btnX, btnY - 4);
+                    ctx.lineTo(btnX, btnY + 4);
+                }
+
+                ctx.stroke();
+            }
+
+            // 绘制状态指示器
+            const indicatorX = node.x + 8;
+            const indicatorY = node.y + 8;
+
+            if (node.status === NodeStatus.PROCESSING) {
+                ctx.fillStyle = '#f59e0b';
+                ctx.beginPath();
+                ctx.arc(indicatorX, indicatorY, 4, 0, Math.PI * 2);
+                ctx.fill();
+
+                // 添加旋转动画效果
+                ctx.strokeStyle = '#f59e0b';
+                ctx.lineWidth = 1;
+                const angle = (Date.now() / 100) % (Math.PI * 2);
+                ctx.beginPath();
+                ctx.arc(indicatorX, indicatorY, 6, angle, angle + Math.PI);
+                ctx.stroke();
+            } else if (node.status === NodeStatus.COMPLETED) {
+                ctx.fillStyle = '#10b981';
+                ctx.beginPath();
+                ctx.arc(indicatorX, indicatorY, 4, 0, Math.PI * 2);
+                ctx.fill();
+
+                // 绘制对勾
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.moveTo(indicatorX - 2, indicatorY);
+                ctx.lineTo(indicatorX, indicatorY + 2);
+                ctx.lineTo(indicatorX + 2, indicatorY - 2);
+                ctx.stroke();
+            } else if (node.status === NodeStatus.ERROR) {
+                ctx.fillStyle = '#ef4444';
+                ctx.beginPath();
+                ctx.arc(indicatorX, indicatorY, 4, 0, Math.PI * 2);
+                ctx.fill();
+
+                // 绘制 X 号
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.moveTo(indicatorX - 2, indicatorY - 2);
+                ctx.lineTo(indicatorX + 2, indicatorY + 2);
+                ctx.moveTo(indicatorX + 2, indicatorY - 2);
+                ctx.lineTo(indicatorX - 2, indicatorY + 2);
+                ctx.stroke();
+            }
+
+            ctx.restore();
+        }
+
+        // 绘制连接线 - 优化路径避免穿过节点
+        function drawConnections() {
+            ctx.save();
+            ctx.strokeStyle = '#6b7280';
+            ctx.lineWidth = 2;
+
+            // 获取结束节点
+            const endNode = flowchartData.nodes.find(n => n.isEndNode && n.visible);
+
+            // 处理开始节点的分支连接
+            const startNode = flowchartData.nodes.find(n => n.id === 'start');
+            if (startNode && startNode.visible) {
+                const children = flowchartData.nodes.filter(n => n.parent === 'start' && n.visible);
+
+                if (children.length > 0) {
+                    const startX = startNode.x + startNode.width / 2;
+                    const startY = startNode.y + startNode.height;
+                    const branchY = startY + 50;
+
+                    // 主干线
+                    ctx.beginPath();
+                    ctx.moveTo(startX, startY);
+                    ctx.lineTo(startX, branchY);
+                    ctx.stroke();
+
+                    // 水平分支线
+                    const leftX = children[0].x + children[0].width / 2;
+                    const rightX = children[children.length - 1].x + children[children.length - 1].width / 2;
+                    ctx.beginPath();
+                    ctx.moveTo(leftX, branchY);
+                    ctx.lineTo(rightX, branchY);
+                    ctx.stroke();
+
+                    // 垂直连接到各子节点
+                    // children.forEach(child => {
+                    //     const childX = child.x + child.width / 2;
+                    //     ctx.beginPath();
+                    //     ctx.moveTo(childX, branchY);
+                    //     ctx.lineTo(childX, child.y);
+                    //     ctx.stroke();
+
+                    //     // 箭头
+                    //     ctx.fillStyle = '#6b7280';
+                    //     ctx.beginPath();
+                    //     ctx.moveTo(childX, child.y);
+                    //     ctx.lineTo(childX - 3, child.y - 6);
+                    //     ctx.lineTo(childX + 3, child.y - 6);
+                    //     ctx.closePath();
+                    //     ctx.fill();
+                    // });
+                }
+            }
+
+            // 处理所有普通父子连接（非开始节点的子节点）
+            flowchartData.nodes.forEach(node => {
+                if (node.visible && node.parent && node.parent !== 'start') {
+                    const parent = flowchartData.nodes.find(n => n.id === node.parent && n.visible);
+                    if (parent) {
+                        const fromX = parent.x + parent.width / 2;
+                        const fromY = parent.y + parent.height;
+                        const toX = node.x + node.width / 2;
+                        const toY = node.y;
+
+                        // 如果节点指向结束节点，只绘制到汇聚点
+                        if (node.pointsToEnd && endNode) {
+                            const convergeY = endNode.y - 50;
+                            ctx.beginPath();
+                            ctx.moveTo(fromX, fromY);
+                            ctx.lineTo(toX, toY);
+                            ctx.stroke();
+
+                            // 箭头
+                            ctx.fillStyle = '#6b7280';
+                            ctx.beginPath();
+                            ctx.moveTo(toX, toY);
+                            ctx.lineTo(toX - 3, toY - 6);
+                            ctx.lineTo(toX + 3, toY - 6);
+                            ctx.closePath();
+                            ctx.fill();
+                        } else {
+                            // 普通连接
+                            ctx.beginPath();
+                            ctx.moveTo(fromX, fromY);
+                            ctx.lineTo(toX, toY);
+                            ctx.stroke();
+
+                            // 箭头
+                            ctx.fillStyle = '#6b7280';
+                            ctx.beginPath();
+                            ctx.moveTo(toX, toY);
+                            ctx.lineTo(toX - 3, toY - 6);
+                            ctx.lineTo(toX + 3, toY - 6);
+                            ctx.closePath();
+                            ctx.fill();
+                        }
+                    }
+                }
+            });
+
+            // 处理指向结束节点的汇聚连接
+            if (endNode) {
+                const endNodes = flowchartData.nodes.filter(n => n.visible && n.pointsToEnd);
+
+                if (endNodes.length > 0) {
+                    const endX = endNode.x + endNode.width / 2;
+                    const endY = endNode.y;
+                    const convergeY = endY - 50;
+
+                    // 从各节点到汇聚点的垂直线
+                    endNodes.forEach(node => {
+                        const nodeX = node.x + node.width / 2;
+                        const nodeY = node.y + node.height;
+
+                        ctx.beginPath();
+                        ctx.moveTo(nodeX, nodeY);
+                        ctx.lineTo(nodeX, convergeY);
+                        ctx.stroke();
+                    });
+
+                    // 水平汇聚线
+                    const leftX = Math.min(...endNodes.map(n => n.x + n.width / 2));
+                    const rightX = Math.max(...endNodes.map(n => n.x + n.width / 2));
+                    ctx.beginPath();
+                    ctx.moveTo(leftX, convergeY);
+                    ctx.lineTo(rightX, convergeY);
+                    ctx.stroke();
+
+                    // 主干线到结束节点
+                    ctx.beginPath();
+                    ctx.moveTo(endX, convergeY);
+                    ctx.lineTo(endX, endY);
+                    ctx.stroke();
+
+                    // 箭头
+                    ctx.fillStyle = '#6b7280';
+                    ctx.beginPath();
+                    ctx.moveTo(endX, endY);
+                    ctx.lineTo(endX - 3, endY - 6);
+                    ctx.lineTo(endX + 3, endY - 6);
+                    ctx.closePath();
+                    ctx.fill();
+                }
+            }
+
+            ctx.restore();
+        }
+
+        // 切换节点展开状态
+        function toggleNode(nodeId) {
+            const node = flowchartData.nodes.find(n => n.id === nodeId);
+            if (!node || !node.hasChildren) return;
+
+            // 检查是否存在结束节点
+            const hasEndNode = flowchartData.nodes.some(n => n.isEndNode && n.visible);
+
+            // 如果存在结束节点且当前要收起节点，则阻止操作
+            if (hasEndNode && node.expanded) {
+                // 可以选择显示提示信息
+                // alert('流程图中存在结束节点时，不能隐藏子节点');
+                return;
+            }
+
+            node.expanded = !node.expanded;
+
+            // 更新子节点的可见性
+            flowchartData.nodes.forEach(n => {
+                if (n.parent === nodeId) {
+                    n.visible = node.expanded;
+                    if (!node.expanded && n.expanded) {
+                        // 如果父节点收起，同时收起所有子节点
+                        toggleNode(n.id);
+                    }
+                }
+            });
+
+            drawFlowchart();
+        }
+
+        // 绘制整个流程图
+        function drawFlowchart() {
+            // 清空画布
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 调整节点位置避免重叠
+            adjustNodePositions();
+
+            // 绘制连接线
+            drawConnections();
+
+            // 绘制节点
+            flowchartData.nodes.forEach(node => {
+                drawNode(node);
+            });
+        }
+
+        // 鼠标点击事件
+        canvas.addEventListener('click', function (event) {
+            const rect = canvas.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+
+            // 检查点击的节点
+            const clickedNode = flowchartData.nodes.find(node => {
+                return node.visible &&
+                    x >= node.x && x <= node.x + node.width &&
+                    y >= node.y && y <= node.y + node.height;
+            });
+
+            if (clickedNode) {
+                if (clickedNode.hasChildren) {
+                    // 检查是否点击了展开按钮区域
+                    const btnX = clickedNode.x + clickedNode.width - 15;
+                    const btnY = clickedNode.y + 8;
+                    const distance = Math.sqrt((x - btnX) ** 2 + (y - btnY) ** 2);
+
+                    if (distance <= 12) {
+                        toggleNode(clickedNode.id);
+                    } else {
+                        alert(`节点: ${clickedNode.text}\n状态: ${clickedNode.status}\n级别: ${clickedNode.level}`);
+                    }
+                } else {
+                    alert(`节点: ${clickedNode.text}\n状态: ${clickedNode.status}\n级别: ${clickedNode.level}`);
+                }
+            }
+        });
+
+        // 鼠标悬停效果
+        canvas.addEventListener('mousemove', function (event) {
+            const rect = canvas.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+
+            let isOverExpandButton = false;
+            let isOverNode = false;
+
+            // 检查是否悬停在节点或展开按钮上
+            flowchartData.nodes.forEach(node => {
+                if (node.visible) {
+                    if (x >= node.x && x <= node.x + node.width &&
+                        y >= node.y && y <= node.y + node.height) {
+                        isOverNode = true;
+
+                        if (node.hasChildren) {
+                            const btnX = node.x + node.width - 15;
+                            const btnY = node.y + 8;
+                            const distance = Math.sqrt((x - btnX) ** 2 + (y - btnY) ** 2);
+
+                            if (distance <= 12) {
+                                isOverExpandButton = true;
+                            }
+                        }
+                    }
+                }
+            });
+
+            canvas.style.cursor = (isOverExpandButton || isOverNode) ? 'pointer' : 'default';
+        });
+
+        // 添加动画循环用于处理中状态的动画效果
+        function animate() {
+            const hasProcessingNodes = flowchartData.nodes.some(n =>
+                n.visible && n.status === NodeStatus.PROCESSING
+            );
+
+            if (hasProcessingNodes) {
+                drawFlowchart();
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        // 初始化绘制
+        drawFlowchart();
+        animate();
+    </script>
+</body>
+
+</html>

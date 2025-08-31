@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #f5f6f8;
+        }
+
+        canvas {
+            border: 1px solid #ddd;
+            background: white;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+    <div style="margin: auto; width: 1000px">
+        <canvas id="flowchart" width="1000" height="700"></canvas>
+    </div>
+</body>
+<script>
+    const canvas = document.getElementById("flowchart");
+    const ctx = canvas.getContext("2d");
+    const NodeStatus = {
+        PENDING: "pending",
+        PROCESSING: "processing",
+        COMPLETED: "completed",
+        ERROR: "error",
+    };
+    const size = {
+        width: 100,
+        height: 40,
+    };
+
+    // 颜色配置
+    const colors = {
+        [NodeStatus.PENDING]: {
+            bg: "#e2e8f0",
+            border: "#94a3b8",
+            text: "#475569",
+        },
+        [NodeStatus.PROCESSING]: {
+            bg: "#fef3c7",
+            border: "#f59e0b",
+            text: "#92400e",
+        },
+        [NodeStatus.COMPLETED]: {
+            bg: "#d1fae5",
+            border: "#10b981",
+            text: "#065f46",
+        },
+        [NodeStatus.ERROR]: { bg: "#fee2e2", border: "#ef4444", text: "#991b1b" },
+    };
+
+    const flowchartData = {
+        id: "1961335205825216512",
+        prereviewId: "1",
+        prereviewVersion: "1.0",
+        parentId: null,
+        nodeLabel: "呈报呈报呈报呈报呈报呈报呈报呈报",
+        complete: false,
+        children: [
+            {
+                id: "1961335205825216513",
+                prereviewId: "1",
+                prereviewVersion: "1.0",
+                contractName: "合同名称",
+                parentId: "1961335205825216512",
+                node: "submitUserTask",
+                status: NodeStatus.COMPLETED,
+                nodeLabel: "呈报任务",
+                children: [
+                    {
+                        id: "1961335219066634242",
+                        prereviewId: "1",
+                        prereviewVersion: "1.0",
+                        parentId: "1961335205825216513",
+                        node: "userTask",
+                        nodeLabel: "审核中1",
+                        approverType: "legal",
+                        approverTypeLabel: "法务",
+                        status: NodeStatus.PROCESSING,
+                        children: [],
+                    },
+                    {
+                        id: "1961335219075022849",
+                        prereviewId: "1",
+                        prereviewVersion: "1.0",
+                        parentId: "1961335205825216513",
+                        node: "userTask",
+                        status: NodeStatus.ERROR,
+                        nodeLabel: "审核失败2",
+                        children: [],
+                    },
+                    {
+                        id: "1961335219095994369",
+                        prereviewId: "1",
+                        prereviewVersion: "1.0",
+                        parentId: "1961335205825216513",
+                        node: "userTask",
+                        status: NodeStatus.COMPLETED,
+                        nodeLabel: "审核通过3",
+                        children: [],
+                    },
+                    {
+                        id: "1961335219095994369",
+                        prereviewId: "1",
+                        prereviewVersion: "1.0",
+                        parentId: "1961335205825216513",
+                        node: "userTask",
+                        status: NodeStatus.PENDING,
+                        nodeLabel: "待审核4",
+                        children: [],
+                    },
+                    {
+                        id: "1961335219095994369",
+                        prereviewId: "1",
+                        prereviewVersion: "1.0",
+                        parentId: "1961335205825216513",
+                        node: "userTask",
+                        status: NodeStatus.COMPLETED,
+                        nodeLabel: "审核通过5",
+                        children: [],
+                    },
+                ],
+            },
+            // {
+            //     "id": "1961335219095994370",
+            //     "prereviewId": "1",
+            //     "prereviewVersion": "2.0",
+            //     "parentId": "1961335205825216512",
+            //     "node": "submitUserTask",
+            //     "nodeLabel": "呈报任务",
+            //     status: NodeStatus.COMPLETED,
+            //     "children": [{
+            //         "id": "1961335219095994371",
+            //         "prereviewId": "1",
+            //         "prereviewVersion": "2.0",
+            //         status: NodeStatus.COMPLETED,
+            //         "parentId": "1961335219095994370",
+            //         "node": "userTask",
+            //         "nodeLabel": "审核任务",
+            //         "children": []
+            //     }]
+            // }
+        ],
+    };
+
+    // 绘制圆角矩形
+    function drawRoundedRect(ctx, x, y, width, height, radius) {
+        ctx.beginPath();
+
+        ctx.moveTo(x + radius, y);
+        ctx.lineTo(x + width - radius, y);
+        ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+        ctx.lineTo(x + width, y + height - radius);
+        ctx.quadraticCurveTo(
+            x + width,
+            y + height,
+            x + width - radius,
+            y + height
+        );
+        ctx.lineTo(x + radius, y + height);
+        ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+        ctx.lineTo(x, y + radius);
+        ctx.quadraticCurveTo(x, y, x + radius, y);
+        ctx.closePath();
+    }
+
+    // 绘制文本
+    function drawNodeText(node, color) {
+        ctx.fillStyle = color.text;
+        ctx.font = "12px Microsoft YaHei";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+
+        const lines = node.nodeLabel.split("\n");
+        const lineHeight = 14;
+        const startY =
+            node.y + node.height / 2 - ((lines.length - 1) * lineHeight) / 2;
+
+        lines.forEach((line, index) => {
+            ctx.fillText(
+                line,
+                node.x + node.width / 2,
+                startY + index * lineHeight
+            );
+        });
+    }
+
+    // 绘制状态指示器
+    function drawStatusIndicator(ctx, x, y, status) {
+        const indicatorX = x + 8;
+        const indicatorY = y + 8;
+
+        if (status === NodeStatus.COMPLETED) {
+            ctx.beginPath();
+            ctx.arc(indicatorX, indicatorY, 4, 0, 2 * Math.PI);
+            ctx.fillStyle = "#10b981";
+            ctx.fill();
+
+            // 绘制对勾
+            ctx.strokeStyle = "white";
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(indicatorX - 2, indicatorY);
+            ctx.lineTo(indicatorX, indicatorY + 2);
+            ctx.lineTo(indicatorX + 2, indicatorY - 2);
+            ctx.stroke();
+        } else if (status === NodeStatus.PROCESSING) {
+            ctx.beginPath();
+            ctx.arc(indicatorX, indicatorY, 4, 0, 2 * Math.PI);
+            ctx.fillStyle = "#f59e0b";
+            ctx.fill();
+
+            // 添加旋转动画效果
+            ctx.strokeStyle = "#f59e0b";
+            ctx.lineWidth = 1;
+            const angle = (Date.now() / 100) % (Math.PI * 2);
+            ctx.beginPath();
+            ctx.arc(indicatorX, indicatorY, 6, angle, angle + Math.PI);
+            ctx.stroke();
+        } else if (status === NodeStatus.PENDING) {
+            // ctx.fillStyle = colors[status]
+            // ctx.fill();
+        } else if (status === NodeStatus.ERROR) {
+            ctx.beginPath();
+            ctx.arc(indicatorX, indicatorY, 4, 0, 2 * Math.PI);
+            ctx.fillStyle = "#ef4444";
+            ctx.fill();
+
+            // 绘制对勾
+            ctx.strokeStyle = "white";
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(indicatorX - 2, indicatorY - 2);
+            ctx.lineTo(indicatorX + 2, indicatorY + 2);
+            ctx.moveTo(indicatorX + 2, indicatorY - 2);
+            ctx.lineTo(indicatorX - 2, indicatorY + 2);
+            ctx.stroke();
+        }
+        ctx.restore();
+    }
+
+    // 绘制背景和边框线
+    function drawBackground(ctx, color) {
+        ctx.fillStyle = color.bg;
+        ctx.fill();
+        ctx.strokeStyle = color.border;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+    }
+
+    function drawNode(node) {
+        ctx.save();
+
+        // 绘制圆角矩形
+        drawRoundedRect(ctx, node.x, node.y, node.width, node.height, 8);
+
+        // 绘制背景和边框线
+        drawBackground(ctx, colors[node.status]);
+
+        // 绘制文本
+        drawNodeText(node, colors[node.status]);
+
+        // 绘制状态指示器
+        drawStatusIndicator(ctx, node.x, node.y, node.status);
+
+        if (node.children?.length) {
+            node.children.forEach(drawNode);
+        }
+    }
+
+    const minDistanceX = 140; // 最小间距
+    const minDistanceY = 60; // 最小间距
+    function adjustNodePositions(nodeItem) {
+        var positionIndex = [];
+        function adjustNodePosition({ x, y, children }) {
+
+            if (children?.length) {
+                const centerIdx = Math.floor(children.length / 2);
+                children.forEach((node, index) => {
+                    node.x = (node.x || 0) + node.width + minDistanceX + x;
+                    if (node.x > (positionIndex[0] || 0)) {
+                        positionIndex.push(node.x);
+                    }
+                    if (children.length % 2 === 0) {
+                        node.y =
+                            (node.y || 0) + index * (40 + minDistanceY) + node.height;
+                    } else if (index === centerIdx) {
+                        node.y = y;
+                    } else {
+                        node.y =
+                            index < centerIdx
+                                ? y - (node.height + minDistanceY) * (centerIdx - index)
+                                : y + (node.height + minDistanceY) * (index - centerIdx);
+                    }
+                    if (node.children?.length) {
+                        adjustNodePositions(node);
+                    }
+                });
+            }
+        }
+        flowchartData.children.forEach((node, index) => {
+            node.y = 700 / 2 - 20;
+            node.x = !index ? 100 : (positionIndex[0] || 0) + node.width;
+            positionIndex.splice(0, 1);
+            adjustNodePosition(node);
+        });
+    }
+
+    function adjustNodeSize(children) {
+        children.forEach((node, index) => {
+            node.width = size.width;
+            node.height = size.height;
+            if (node.children && node.children.length > 0) {
+                adjustNodeSize(node.children);
+            }
+        });
+    }
+
+    // 绘制连接线
+    function drawConnections() {
+        flowchartData.children.forEach((node, index) => {
+            if (node?.children?.length) {
+                const startX = node.x + node.width
+                const startY = node.y + node.height / 2;
+                const endX = node?.children?.[0]?.x;
+                ctx.beginPath();
+                ctx.moveTo(startX, startY);
+                ctx.lineTo(endX, startY);
+                ctx.stroke();
+                console.log(startX, endX)
+                // 小箭头
+                ctx.fillStyle = '#6b7280';
+                ctx.beginPath();
+                ctx.moveTo(endX, startY);
+                ctx.lineTo(endX - 5, startY - 4);
+                ctx.lineTo(endX - 5, startY + 4);
+                ctx.closePath();
+                ctx.fill();
+
+                // 水平线
+                const leftX = (endX - startX) / 2 + startX;
+                const topY = node.children[0].y + node.height / 2;
+                const bottomY = node.children[node.children.length - 1].y + node.children[node.children.length - 1].height / 2;
+                ctx.beginPath();
+                ctx.moveTo(leftX, topY);
+                ctx.lineTo(leftX, bottomY);
+                ctx.stroke();
+            }
+        });
+    }
+
+    // 绘制整个流程图
+    function drawFlowchart() {
+        // 清空画布
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // 绘制连接线
+        drawConnections();
+
+        // 绘制节点
+        flowchartData.children.forEach((node) => {
+            drawNode(node);
+        });
+    }
+
+    // 添加动画循环用于处理中状态的动画效果
+    function animate() {
+        const hasProcessingNodes = flowchartData.children.some(
+            (n) => n.status === NodeStatus.PROCESSING
+        );
+        if (JSON.stringify(flowchartData).includes(NodeStatus.PROCESSING)) {
+            drawFlowchart();
+        }
+        requestAnimationFrame(animate);
+    }
+
+    // 鼠标点击事件
+    canvas.addEventListener("click", function (event) { });
+
+    // 鼠标悬停效果
+    canvas.addEventListener("mousemove", function (event) { });
+
+
+    adjustNodeSize(flowchartData.children);
+    adjustNodePositions();
+    drawFlowchart();
+    // animate();
+    console.log(flowchartData);
+</script>
+
+</html>
