@@ -87,43 +87,7 @@
             approverType: "legal",
             approverTypeLabel: "法务",
             status: NodeStatus.PROCESSING,
-            children: [{
-              id: "1961335219095994369",
-              prereviewId: "1",
-              prereviewVersion: "1.0",
-              parentId: "1961335205825216513",
-              node: "userTask",
-              status: NodeStatus.COMPLETED,
-              nodeLabel: "审核通过6",
-              children: [{
-                id: "1961335219095994369",
-                prereviewId: "1",
-                prereviewVersion: "1.0",
-                parentId: "1961335205825216513",
-                node: "userTask",
-                status: NodeStatus.COMPLETED,
-                nodeLabel: "审核通过7",
-                children: [{
-                  id: "1961335219095994369",
-                  prereviewId: "1",
-                  prereviewVersion: "1.0",
-                  parentId: "1961335205825216513",
-                  node: "userTask",
-                  status: NodeStatus.COMPLETED,
-                  nodeLabel: "审核通过6",
-                  children: [{
-                    id: "1961335219095994369",
-                    prereviewId: "1",
-                    prereviewVersion: "1.0",
-                    parentId: "1961335205825216513",
-                    node: "userTask",
-                    status: NodeStatus.COMPLETED,
-                    nodeLabel: "审核通过7",
-                    children: [],
-                  }],
-                }],
-              }],
-            }],
+            children: [],
           },
           {
             id: "1961335219075022849",
@@ -141,51 +105,51 @@
             prereviewVersion: "1.0",
             parentId: "1961335205825216513",
             node: "userTask",
-            status: NodeStatus.COMPLETED,
-            nodeLabel: "审核通过3",
-            children: [],
-          },
-          {
-            id: "1961335219095994369",
-            prereviewId: "1",
-            prereviewVersion: "1.0",
-            parentId: "1961335205825216513",
-            node: "userTask",
             status: NodeStatus.PENDING,
-            nodeLabel: "待审核4",
+            nodeLabel: "保留意见",
             children: [],
           },
-          {
-            id: "1961335219095994369",
-            prereviewId: "1",
-            prereviewVersion: "1.0",
-            parentId: "1961335205825216513",
-            node: "userTask",
-            status: NodeStatus.COMPLETED,
-            nodeLabel: "审核通过5",
-            children: [],
-          },
+          // {
+          //   id: "1961335219095994369",
+          //   prereviewId: "1",
+          //   prereviewVersion: "1.0",
+          //   parentId: "1961335205825216513",
+          //   node: "userTask",
+          //   status: NodeStatus.PENDING,
+          //   nodeLabel: "待审核4",
+          //   children: [],
+          // },
+          // {
+          //   id: "1961335219095994369",
+          //   prereviewId: "1",
+          //   prereviewVersion: "1.0",
+          //   parentId: "1961335205825216513",
+          //   node: "userTask",
+          //   status: NodeStatus.COMPLETED,
+          //   nodeLabel: "审核通过5",
+          //   children: [],
+          // },
         ],
       },
-      // {
-      //     "id": "1961335219095994370",
-      //     "prereviewId": "1",
-      //     "prereviewVersion": "2.0",
-      //     "parentId": "1961335205825216512",
-      //     "node": "submitUserTask",
-      //     "nodeLabel": "呈报任务",
-      //     status: NodeStatus.COMPLETED,
-      //     "children": [{
-      //         "id": "1961335219095994371",
-      //         "prereviewId": "1",
-      //         "prereviewVersion": "2.0",
-      //         status: NodeStatus.COMPLETED,
-      //         "parentId": "1961335219095994370",
-      //         "node": "userTask",
-      //         "nodeLabel": "审核任务",
-      //         "children": []
-      //     }]
-      // }
+      {
+        "id": "1961335219095994370",
+        "prereviewId": "1",
+        "prereviewVersion": "2.0",
+        "parentId": "1961335205825216512",
+        "node": "submitUserTask",
+        "nodeLabel": "呈报任务",
+        status: NodeStatus.COMPLETED,
+        "children": [{
+          "id": "1961335219095994371",
+          "prereviewId": "1",
+          "prereviewVersion": "2.0",
+          status: NodeStatus.COMPLETED,
+          "parentId": "1961335219095994370",
+          "node": "userTask",
+          "nodeLabel": "审核任务",
+          "children": []
+        }]
+      },
     ],
   };
 
@@ -314,29 +278,22 @@
     }
   }
 
-  const minDistanceX = 140; // 最小间距
+  const minDistanceX = 80; // 最小间距
   const minDistanceY = 60; // 最小间距
-  function adjustNodePositions(nodeItem) {
-    var positionIndex = [];
+  function adjustNodePositions() {
+    var farestX = 0
     function adjustNodePosition({ x, y, children }) {
       if (children?.length) {
+        const isOddLen = (children.length % 2) % 2 !== 0
         const centerIdx = Math.floor(children.length / 2);
         children.forEach((node, index) => {
-          node.x = (node.x || 0) + node.width + minDistanceX + x;
-          if (node.x > (positionIndex[0] || 0)) {
-            positionIndex.push(node.x);
-          }
-          if (children.length % 2 === 0) {
-            node.y =
-              (node.y || 0) + index * (40 + minDistanceY) + node.height;
-          } else if (index === centerIdx) {
-            node.y = y;
-          } else {
-            node.y =
-              index < centerIdx
-                ? y - (node.height + minDistanceY) * (centerIdx - index)
-                : y + (node.height + minDistanceY) * (index - centerIdx);
-          }
+          node.x = node.width + minDistanceX + x;
+          farestX = node.x > farestX ? node.x : farestX
+          // 中间位置前后
+          node.y = (index < centerIdx) ? (y - (node.height + minDistanceY) * (centerIdx - index)) : y + (node.height + minDistanceY) * (index - centerIdx);
+
+          // 中间位置
+          node.y = !isOddLen ? (node.y + (node.height + minDistanceY) / 2) : (index == centerIdx ? y : node.y)
           if (node.children?.length) {
             adjustNodePosition(node);
           }
@@ -345,8 +302,8 @@
     }
     flowchartData.children.forEach((node, index) => {
       node.y = 700 / 2 - 20;
-      node.x = !index ? 100 : (positionIndex[0] || 0) + node.width;
-      positionIndex.splice(0, 1);
+      node.x = !index ? 100 : farestX + node.width + minDistanceX;
+      farestX = 0;
       adjustNodePosition(node);
     });
   }
@@ -373,7 +330,7 @@
       ctx.fill();
     }
 
-    function drawConnection(node) {
+    function drawConnection(node, index) {
       if (node?.children?.length) {
         var startX = node.x + node.width
         var startY = node.y + node.height / 2;
@@ -414,6 +371,16 @@
 
           // 嵌套的子节点
           drawConnection(node.children?.[0])
+        }
+
+        // 后面的节点连接前面的节点
+        if (index > 0) {
+          const startY = node.y + (node.height / 2)
+          ctx.beginPath();
+          ctx.moveTo(node.x, startY);
+          ctx.lineTo(node.x - 80, startY);
+          ctx.stroke();
+          drawTriangle(node.x, startY)
         }
       }
     }
