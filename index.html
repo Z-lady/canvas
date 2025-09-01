@@ -446,8 +446,8 @@
           // 存在完成节点，并且当前状态不属于错误的状态，链接到完成
           const startX = node.x + node.width
           const startY = node.y + node.height / 2
+          ctx.beginPath();
           ctx.moveTo(startX, startY);
-          console.log(startX, startY, node)
           ctx.lineTo(completeNode.x + node.width / 2, startY);
           ctx.moveTo(completeNode.x + node.width / 2, startY);
           ctx.lineTo(completeNode.x + node.width / 2, startY + minDistanceY + node.height / 2);
