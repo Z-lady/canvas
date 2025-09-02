@@ -65,7 +65,7 @@
     prereviewVersion: "1.0",
     parentId: null,
     nodeLabel: "呈报",
-    completeTime: '123',
+    completeTime: '12',
     children: [
       {
         id: "1961335205825216513",
@@ -84,11 +84,11 @@
           },
           {
             nodeLabel: "审核完成1-1",
-            status: NodeStatus.ERROR,
+            status: NodeStatus.COMPLETED,
             children: [],
           },
           {
-            status: NodeStatus.ERROR,
+            status: NodeStatus.COMPLETED,
             nodeLabel: "审核完成1-2",
             children: [],
           },
@@ -99,11 +99,11 @@
         nodeLabel: "呈报任务2",
         status: NodeStatus.COMPLETED,
         children: [
-          {
-            status: NodeStatus.ERROR,
-            "nodeLabel": "审核不通过",
-            "children": []
-          },
+          // {
+          //   status: NodeStatus.ERROR,
+          //   "nodeLabel": "审核不通过",
+          //   "children": []
+          // },
           {
             status: NodeStatus.ERROR,
             "nodeLabel": "审核不通过",
@@ -122,7 +122,7 @@
         children: [
           {
             status: NodeStatus.COMPLETED,
-            "nodeLabel": "审核不通过",
+            "nodeLabel": "审核通过",
             "children": []
           },
           {
@@ -343,6 +343,7 @@
     }
     var uid = 0
     function drawConnection({ x, y, children, width, height, level } = node) {
+
       if (children?.length) {
         children.forEach((child, index) => {
           if (child.status == NodeStatus.ERROR || child.status == NodeStatus.PENDING) {
@@ -367,9 +368,10 @@
               ctx.stroke()
               drawUpTriangle(endX, nextNode.y + nextNode.height)
             }
-
           } else if (child.status == NodeStatus.COMPLETED) {
+            const multiComplete = children.filter(ele => ele.status == NodeStatus.COMPLETED)
             if (child.y == centerY) {
+              console.log(multiComplete)
               startX = child.x + child.width / 2
               startY = child.y + child.height
               ctx.beginPath()
@@ -378,37 +380,64 @@
               ctx.stroke()
               ctx.beginPath()
               ctx.moveTo(startX, startY + minDistanceY / 2)
-              ctx.lineTo(completeNode.x + completeNode.width / 2, startY + minDistanceY / 2)
+              ctx.lineTo(startX + child.width / 2 + minDistanceX / 2, startY + minDistanceY / 2)
+              ctx.stroke()
+              ctx.beginPath()
+              ctx.moveTo(startX + child.width / 2 + minDistanceX / 2, startY + minDistanceY / 2)
+              ctx.lineTo(startX + child.width / 2 + minDistanceX / 2, startY + minDistanceY + child.height / 2)
               ctx.stroke()
             } else if (child.y > centerY) {
               startX = child.x + child.width
               startY = child.y + child.height / 2
               endX = completeNode.x + completeNode.width / 2
-              ctx.beginPath()
-              ctx.moveTo(startX, startY)
-              ctx.lineTo(endX, startY)
-              ctx.stroke()
-              ctx.beginPath()
-              ctx.moveTo(endX, startY)
-              ctx.lineTo(endX, completeNode.y + completeNode.height)
-              ctx.stroke()
-              drawUpTriangle(endX, completeNode.y + completeNode.height)
+
+              if (!uid) {
+                ctx.beginPath()
+                ctx.moveTo(startX, startY)
+                ctx.lineTo(endX, startY)
+                ctx.stroke()
+                ctx.beginPath()
+                ctx.moveTo(endX, startY)
+                ctx.lineTo(endX, completeNode.y + completeNode.height)
+                ctx.stroke()
+                drawUpTriangle(endX, completeNode.y + completeNode.height)
+              } else if (uid > index) {
+                console.log(child)
+                startX = child.x + child.width / 2
+                startY = child.y + child.height
+                ctx.beginPath()
+                ctx.moveTo(startX, startY)
+                ctx.lineTo(startX, startY + minDistanceY / 2)
+                ctx.stroke()
+              }
+              uid = index
             }
+          } else if (child.status == NodeStatus.PROCESSING && children.some(ele => ele.status == NodeStatus.ERROR || ele.status == NodeStatus.PENDING)) {
+            var startX = child.x + child.width
+            var startY = child.y + child.height / 2
+            var endX = child.y == nextNode.y ? (startX + minDistanceX) : (startX + minDistanceX + nextNode.width / 2)
+            ctx.beginPath()
+            ctx.moveTo(startX, startY)
+            ctx.lineTo(endX, startY)
+            ctx.stroke()
+            ctx.beginPath()
+            ctx.moveTo(endX, startY)
+            ctx.lineTo(endX, nextNode.y)
+            ctx.stroke()
+            drawDownTriangle(endX, nextNode.y)
           }
         })
-      } else {
-        console.log(children)
       }
     }
 
     const completeNode = flowchartData.completeTime ? flowchartData.children[flowchartData.children.length - 1] : null
     const centerY = flowchartData.children[0].y
     var nextNode = null
-    var isAllComplete = false
-    var isError = false
     flowchartData.children.forEach((node, index) => {
       node.level = index + 1
-      nextNode = node
+      nextNode = flowchartData.children[index + 1]
+      const isGather = node.children?.some(child => child.status == NodeStatus.COMPLETED)
+      const childAllComplete = node.children?.every(child => child.status == NodeStatus.COMPLETED)
       if (node.children?.length && node !== completeNode) {
         if (node.children.length > 1) {
           // 子节点左侧竖直线
@@ -420,8 +449,6 @@
           ctx.lineTo(startX, endY);
           ctx.stroke();
 
-          isAllComplete = node.children.every(child => child.status == NodeStatus.COMPLETED) && completeNode
-          isError = node.children.every(child => child.status == NodeStatus.ERROR || child.status == NodeStatus.PENDING)
           // 水平线连接到子节点
           node.children.forEach(child => {
             const childY = child.y + child.height / 2
@@ -441,7 +468,7 @@
           ctx.stroke();
 
           // 如果所有节点都是已经完成的节点，并且有完成节点，子节点右侧汇聚到结束节点（子节点右侧竖直线）
-          if (isAllComplete || isError) {
+          if ((!isGather || childAllComplete) && nextNode) {
             startX = node.children[0].x + node.width + minDistanceX / 2
             startY = node.children[0].y + node.height / 2
             ctx.beginPath();
@@ -476,7 +503,7 @@
           ctx.lineTo(startX + minDistanceX, startY);
           ctx.stroke();
         }
-        if (!isAllComplete && !isError) {
+        if (isGather && !childAllComplete) {
           drawConnection(node)
         }
       } else if (!node.children?.length && node !== completeNode) {
