@@ -78,17 +78,17 @@
         nodeLabel: "呈报任务1",
         children: [
           {
-            status: NodeStatus.ERROR,
+            status: NodeStatus.PENDING,
             nodeLabel: "保留意见1-3",
             children: [],
           },
           {
             nodeLabel: "审核完成1-1",
-            status: NodeStatus.ERROR,
+            status: NodeStatus.PROCESSING,
             children: [],
           },
           {
-            status: NodeStatus.COMPLETED,
+            status: NodeStatus.ERROR,
             nodeLabel: "审核完成1-2",
             children: [],
           },
@@ -105,7 +105,7 @@
             "children": []
           },
           {
-            status: NodeStatus.COMPLETED,
+            status: NodeStatus.ERROR,
             "nodeLabel": "审核通过",
             "children": []
           },
@@ -369,48 +369,63 @@
               drawUpTriangle(endX, nextNode.y + nextNode.height)
             }
           } else if (child.status == NodeStatus.COMPLETED) {
-            const multiComplete = children.filter(ele => ele.status == NodeStatus.COMPLETED)
-            if (child.y == centerY) {
-              console.log(multiComplete)
-              startX = child.x + child.width / 2
-              startY = child.y + child.height
-              ctx.beginPath()
-              ctx.moveTo(startX, startY)
-              ctx.lineTo(startX, startY + minDistanceY / 2)
-              ctx.stroke()
-              ctx.beginPath()
-              ctx.moveTo(startX, startY + minDistanceY / 2)
-              ctx.lineTo(startX + child.width / 2 + minDistanceX / 2, startY + minDistanceY / 2)
-              ctx.stroke()
-              ctx.beginPath()
-              ctx.moveTo(startX + child.width / 2 + minDistanceX / 2, startY + minDistanceY / 2)
-              ctx.lineTo(startX + child.width / 2 + minDistanceX / 2, startY + minDistanceY + child.height / 2)
-              ctx.stroke()
-            } else if (child.y > centerY) {
+            if (children.length == 1) {
               startX = child.x + child.width
               startY = child.y + child.height / 2
-              endX = completeNode.x + completeNode.width / 2
-
-              if (!uid) {
-                ctx.beginPath()
-                ctx.moveTo(startX, startY)
-                ctx.lineTo(endX, startY)
-                ctx.stroke()
-                ctx.beginPath()
-                ctx.moveTo(endX, startY)
-                ctx.lineTo(endX, completeNode.y + completeNode.height)
-                ctx.stroke()
-                drawUpTriangle(endX, completeNode.y + completeNode.height)
-              } else if (uid > index) {
-                console.log(child)
+              endX = startX + minDistanceX
+              console.log(children, startX, endX)
+              ctx.beginPath()
+              ctx.moveTo(startX, startY)
+              ctx.lineTo(endX, startY)
+              ctx.stroke()
+              drawRightTriangle(endX, startY)
+            } else {
+              if (child.y == centerY) {
                 startX = child.x + child.width / 2
                 startY = child.y + child.height
                 ctx.beginPath()
                 ctx.moveTo(startX, startY)
                 ctx.lineTo(startX, startY + minDistanceY / 2)
                 ctx.stroke()
+                ctx.beginPath()
+                ctx.moveTo(startX, startY + minDistanceY / 2)
+                ctx.lineTo(startX + child.width / 2 + minDistanceX / 2, startY + minDistanceY / 2)
+                ctx.stroke()
+                ctx.beginPath()
+                ctx.moveTo(startX + child.width / 2 + minDistanceX / 2, startY + minDistanceY / 2)
+                ctx.lineTo(startX + child.width / 2 + minDistanceX / 2, startY + minDistanceY + child.height + minDistanceY / 2)
+                ctx.stroke()
+              } else if (child.y > centerY) {
+                startX = child.x + child.width
+                startY = child.y + child.height / 2
+                endX = completeNode.x + completeNode.width / 2
+                if (!uid) {
+                  startX = child.x + child.width / 2
+                  startY = child.y + child.height
+                  ctx.beginPath()
+                  ctx.moveTo(startX, startY)
+                  ctx.lineTo(startX, startY + minDistanceY / 2)
+                  ctx.stroke()
+                  ctx.beginPath()
+                  ctx.moveTo(startX, startY + minDistanceY / 2)
+                  ctx.lineTo(completeNode.x + completeNode.width / 2, startY + minDistanceY / 2)
+                  ctx.stroke()
+                  ctx.beginPath()
+                  ctx.moveTo(completeNode.x + completeNode.width / 2, startY + minDistanceY / 2)
+                  ctx.lineTo(endX, completeNode.y + completeNode.height)
+                  ctx.stroke()
+                  drawUpTriangle(endX, completeNode.y + completeNode.height)
+                } else if (uid > index) {
+                  console.log(child)
+                  startX = child.x + child.width / 2
+                  startY = child.y + child.height
+                  ctx.beginPath()
+                  ctx.moveTo(startX, startY)
+                  ctx.lineTo(startX, startY + minDistanceY + child.height / 2)
+                  ctx.stroke()
+                }
+                uid = index
               }
-              uid = index
             }
           } else if (child.status == NodeStatus.PROCESSING && children.some(ele => ele.status == NodeStatus.ERROR || ele.status == NodeStatus.PENDING)) {
             var startX = child.x + child.width
@@ -502,8 +517,9 @@
           ctx.moveTo(startX, startY);
           ctx.lineTo(startX + minDistanceX, startY);
           ctx.stroke();
+          drawRightTriangle(startX + minDistanceX, startY)
         }
-        if (isGather && !childAllComplete) {
+        if (isGather && (!childAllComplete || node.children.length == 1)) {
           drawConnection(node)
         }
       } else if (!node.children?.length && node !== completeNode) {
@@ -523,7 +539,6 @@
   function drawFlowchart() {
     // 清空画布
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-
 
     // 绘制节点
     flowchartData.children.forEach((node) => {
