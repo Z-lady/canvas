@@ -21,8 +21,8 @@
 </head>
 
 <body>
-  <div style="margin: auto; width: 1200px">
-    <canvas id="flowchart" width="1200px" height="700px"></canvas>
+  <div style="margin: auto; width: 100%">
+    <canvas id="flowchart" width="1500px" height="700px"></canvas>
   </div>
 </body>
 <script>
@@ -65,7 +65,7 @@
     prereviewVersion: "1.0",
     parentId: null,
     nodeLabel: "呈报",
-    completeTime: '123123',
+    completeTime: '123',
     children: [
       {
         id: "1961335205825216513",
@@ -78,110 +78,62 @@
         nodeLabel: "呈报任务1",
         children: [
           {
-            id: "1961335219066634242",
-            prereviewId: "1",
-            prereviewVersion: "1.0",
-            parentId: "1961335205825216513",
-            node: "userTask",
-            nodeLabel: "审核中1-1",
-            approverType: "legal",
-            approverTypeLabel: "法务",
-            status: NodeStatus.COMPLETED,
-            children: [
-              //   {
-              //   id: "1961335219066634242",
-              //   prereviewId: "1",
-              //   prereviewVersion: "1.0",
-              //   parentId: "1961335205825216513",
-              //   node: "userTask",
-              //   nodeLabel: "审核中1-1-1",
-              //   approverType: "legal",
-              //   approverTypeLabel: "法务",
-              //   status: NodeStatus.COMPLETED,
-              //   children: [],
-              // }
-            ],
-          },
-          {
-            id: "1961335219095994369",
-            prereviewId: "1",
-            prereviewVersion: "1.0",
-            parentId: "1961335205825216513",
-            node: "userTask",
-            status: NodeStatus.PENDING,
-            nodeLabel: "保留意见1-2",
-            children: [],
-          },
-          {
-            id: "1961335219075022849",
-            prereviewId: "1",
-            prereviewVersion: "1.0",
-            parentId: "1961335205825216513",
-            node: "userTask",
             status: NodeStatus.ERROR,
-            nodeLabel: "审核失败1-3",
+            nodeLabel: "保留意见1-3",
             children: [],
           },
-          // {
-          //   id: "1961335219095994369",
-          //   prereviewId: "1",
-          //   prereviewVersion: "1.0",
-          //   parentId: "1961335205825216513",
-          //   node: "userTask",
-          //   status: NodeStatus.PENDING,
-          //   nodeLabel: "待审核4",
-          //   children: [],
-          // },
-          // {
-          //   id: "1961335219095994369",
-          //   prereviewId: "1",
-          //   prereviewVersion: "1.0",
-          //   parentId: "1961335205825216513",
-          //   node: "userTask",
-          //   status: NodeStatus.COMPLETED,
-          //   nodeLabel: "审核通过5",
-          //   children: [],
-          // },
+          {
+            nodeLabel: "审核完成1-1",
+            status: NodeStatus.ERROR,
+            children: [],
+          },
+          {
+            status: NodeStatus.ERROR,
+            nodeLabel: "审核完成1-2",
+            children: [],
+          },
+
         ],
       },
       {
-        "id": "1961335219095994370",
-        "prereviewId": "1",
-        "prereviewVersion": "2.0",
-        "parentId": "1961335205825216512",
-        "node": "submitUserTask",
-        "nodeLabel": "呈报任务2",
+        nodeLabel: "呈报任务2",
         status: NodeStatus.COMPLETED,
-        "children": [
+        children: [
           {
-            "id": "1961335219095994371",
-            "prereviewId": "1",
-            "prereviewVersion": "2.0",
-            status: NodeStatus.COMPLETED,
-            "parentId": "1961335219095994370",
-            "node": "userTask",
-            "nodeLabel": "审核通过",
+            status: NodeStatus.ERROR,
+            "nodeLabel": "审核不通过",
             "children": []
           },
           {
-            "id": "1961335219095994371",
-            "prereviewId": "1",
-            "prereviewVersion": "2.0",
+            status: NodeStatus.ERROR,
+            "nodeLabel": "审核不通过",
+            "children": []
+          },
+          {
             status: NodeStatus.COMPLETED,
-            "parentId": "1961335219095994370",
-            "node": "userTask",
             "nodeLabel": "审核通过",
             "children": []
-          }
+          },
         ]
       },
       {
-        "id": "1961335219095994370",
-        "prereviewId": "1",
-        "prereviewVersion": "3.0",
-        "parentId": "1961335205825216512",
-        "node": "submitUserTask",
-        "nodeLabel": "任务结束3",
+        nodeLabel: "任务3",
+        status: NodeStatus.COMPLETED,
+        children: [
+          {
+            status: NodeStatus.COMPLETED,
+            "nodeLabel": "审核不通过",
+            "children": []
+          },
+          {
+            status: NodeStatus.COMPLETED,
+            "nodeLabel": "审核通过",
+            "children": []
+          },
+        ]
+      },
+      {
+        nodeLabel: "任务结束4",
         status: NodeStatus.COMPLETED,
       },
     ],
@@ -389,118 +341,155 @@
       ctx.closePath();
       ctx.fill();
     }
-
     var uid = 0
-    function drawConnection(node, index) {
-      uid++
-      if (node?.children?.length) {
-        // 记录下一个版本的连接点要连接到上一个版本的连接点
-        var startX = node.x + node.width
-        var startY = node.y + node.height / 2;
-        var endX = node?.children?.[0]?.x;
-        if (node.children.length > 1) {
-          // 水平线
-          const leftX = (endX - startX) / 2 + startX;
-          const topY = node.children[0].y + node.height / 2;
-          const bottomY = node.children[node.children.length - 1].y + node.children[node.children.length - 1].height / 2;
-          ctx.beginPath();
-          ctx.moveTo(leftX, topY);
-          ctx.lineTo(leftX, bottomY);
-          ctx.stroke();
-          node.children.forEach((child, index) => {
-            // 嵌套的子节点
-            preNodes.push(child)
-            drawConnection(child)
-            preNodes.splice(preNodes.length - 1, 1)
-          })
+    function drawConnection({ x, y, children, width, height, level } = node) {
+      if (children?.length) {
+        children.forEach((child, index) => {
+          if (child.status == NodeStatus.ERROR || child.status == NodeStatus.PENDING) {
+            var startX = child.x + child.width
+            var startY = child.y + child.height / 2
+            var endX = child.y == nextNode.y ? (startX + minDistanceX) : (startX + minDistanceX + nextNode.width / 2)
+            ctx.beginPath()
+            ctx.moveTo(startX, startY)
+            ctx.lineTo(endX, startY)
+            ctx.stroke()
 
-          // 汇聚到上一层级的发出的节点
-          ctx.beginPath();
-          ctx.moveTo(leftX, (bottomY - topY) / 2 + topY);
-          ctx.lineTo(leftX - minDistanceX / 2, (bottomY - topY) / 2 + topY);
-          ctx.stroke();
-        } else {
-          const childX = node.x
-          const childY = node.y + node.height / 2
-          ctx.beginPath();
-          ctx.moveTo(childX, childY);
-          ctx.lineTo(childX - (uid > 2 ? minDistanceX : (minDistanceX / 2)), childY);
-          ctx.stroke();
-          // 绘制小三角
-          drawRightTriangle(childX, childY)
-          // 嵌套的子节点
-          drawConnection(node.children?.[0])
-        }
+            ctx.beginPath()
+            ctx.moveTo(endX, startY)
+            if (child.y < nextNode.y) {
+              ctx.lineTo(endX, nextNode.y)
+              ctx.stroke()
+              drawDownTriangle(endX, nextNode.y)
+            } else if (child.y == nextNode.y) {
+              drawRightTriangle(endX, nextNode.y + nextNode.height / 2)
+            } else if (child.y > nextNode.y) {
+              ctx.lineTo(endX, nextNode.y + nextNode.height)
+              ctx.stroke()
+              drawUpTriangle(endX, nextNode.y + nextNode.height)
+            }
+
+          } else if (child.status == NodeStatus.COMPLETED) {
+            if (child.y == centerY) {
+              startX = child.x + child.width / 2
+              startY = child.y + child.height
+              ctx.beginPath()
+              ctx.moveTo(startX, startY)
+              ctx.lineTo(startX, startY + minDistanceY / 2)
+              ctx.stroke()
+              ctx.beginPath()
+              ctx.moveTo(startX, startY + minDistanceY / 2)
+              ctx.lineTo(completeNode.x + completeNode.width / 2, startY + minDistanceY / 2)
+              ctx.stroke()
+            } else if (child.y > centerY) {
+              startX = child.x + child.width
+              startY = child.y + child.height / 2
+              endX = completeNode.x + completeNode.width / 2
+              ctx.beginPath()
+              ctx.moveTo(startX, startY)
+              ctx.lineTo(endX, startY)
+              ctx.stroke()
+              ctx.beginPath()
+              ctx.moveTo(endX, startY)
+              ctx.lineTo(endX, completeNode.y + completeNode.height)
+              ctx.stroke()
+              drawUpTriangle(endX, completeNode.y + completeNode.height)
+            }
+          }
+        })
       } else {
-        const childX = node.x
-        const childY = node.y + node.height / 2
-        ctx.beginPath();
-        ctx.moveTo(childX, childY);
-        ctx.lineTo(childX - (uid > 2 || uid <= 1 ? minDistanceX : (minDistanceX / 2)), childY);
-        ctx.stroke();
-        // 绘制小三角
-        drawRightTriangle(childX, childY)
+        console.log(children)
       }
-
-      // else if (node.status === NodeStatus.ERROR && nextNode) {
-      //   // 错误节点连接后面的重新发起的节点
-      //   // ctx.beginPath();
-      //   // const startX = node.x + node.width
-      //   // const startY = node.y + node.height / 2
-      //   // ctx.moveTo(startX, startY)
-      //   // if (node.y == centerY) {
-      //   //   // 同在Y轴上
-      //   //   ctx.lineTo(startX + minDistanceX, startY)
-      //   //   ctx.stroke();
-      //   //   drawRightTriangle(startX + minDistanceX, startY)
-      //   // } else {
-      //   //   const startX1 = startX + minDistanceX + node.width / 2
-      //   //   ctx.lineTo(startX1, startY)
-      //   //   ctx.moveTo(startX1, startY)
-      //   //   const startY1 = node.y < centerY ? startY + minDistanceY + node.height / 2 : startY - minDistanceY - node.height / 2
-      //   //   ctx.lineTo(startX1, startY1)
-      //   //   ctx.stroke();
-      //   //   node.y < centerY ? drawDownTriangle(startX1, startY1) : drawUpTriangle(startX1, startY1)
-      //   // }
-      //   // nextNode = null
-      // }
-      // else if (!node?.children?.length && nextNode) {
-      //   // if (node.y === nextNode.y) {
-      //   //   // 首层没有子节点，同Y轴的节点需要连接下一个节点
-      //   //   const startX = node.x + node.width
-      //   //   const startY = node.y + node.height / 2
-      //   //   ctx.beginPath();
-      //   //   ctx.moveTo(startX, startY);
-      //   //   ctx.lineTo(startX + minDistanceX, startY);
-      //   //   ctx.stroke();
-      //   //   drawRightTriangle(startX + minDistanceX, startY)
-      //   // } else if (node.status !== NodeStatus.ERROR && completeNode) {
-      //   //   // 存在完成节点，并且当前状态不属于错误的状态，链接到完成
-      //   //   const startX = node.x + node.width
-      //   //   const startY = node.y + node.height / 2
-      //   //   ctx.beginPath();
-      //   //   ctx.moveTo(startX, startY);
-      //   //   ctx.lineTo(completeNode.x + node.width / 2, startY);
-      //   //   ctx.moveTo(completeNode.x + node.width / 2, startY);
-      //   //   ctx.lineTo(completeNode.x + node.width / 2, startY + minDistanceY + node.height / 2);
-      //   //   ctx.stroke();
-      //   //   drawDownTriangle(completeNode.x + node.width / 2, startY + minDistanceY + node.height / 2)
-      //   // }
-      // }
-
-      uid--;
     }
 
-    var completeNode = flowchartData.completeTime ? flowchartData.children[flowchartData.children.length - 1] : null
-    var preNodes = []
-    var nextNode = null
+    const completeNode = flowchartData.completeTime ? flowchartData.children[flowchartData.children.length - 1] : null
     const centerY = flowchartData.children[0].y
+    var nextNode = null
+    var isAllComplete = false
+    var isError = false
     flowchartData.children.forEach((node, index) => {
-      nextNode = flowchartData.children[index + 1]
-      preNodes.push(node)
-      drawConnection(node)
+      node.level = index + 1
+      nextNode = node
+      if (node.children?.length && node !== completeNode) {
+        if (node.children.length > 1) {
+          // 子节点左侧竖直线
+          var startX = node.x + node.width + minDistanceX / 2
+          var startY = node.children[0].y + node.height / 2
+          var endY = node.children[node.children.length - 1].y + node.height / 2
+          ctx.beginPath();
+          ctx.moveTo(startX, startY);
+          ctx.lineTo(startX, endY);
+          ctx.stroke();
+
+          isAllComplete = node.children.every(child => child.status == NodeStatus.COMPLETED) && completeNode
+          isError = node.children.every(child => child.status == NodeStatus.ERROR || child.status == NodeStatus.PENDING)
+          // 水平线连接到子节点
+          node.children.forEach(child => {
+            const childY = child.y + child.height / 2
+            ctx.beginPath();
+            ctx.moveTo(startX, childY);
+            ctx.lineTo(child.x, childY);
+            ctx.stroke();
+            drawRightTriangle(child.x, childY)
+          })
+
+          // 汇聚线
+          startX = startX - minDistanceX / 2
+          startY = node.y + node.height / 2
+          ctx.beginPath();
+          ctx.moveTo(startX, startY);
+          ctx.lineTo(startX + minDistanceX / 2, startY);
+          ctx.stroke();
+
+          // 如果所有节点都是已经完成的节点，并且有完成节点，子节点右侧汇聚到结束节点（子节点右侧竖直线）
+          if (isAllComplete || isError) {
+            startX = node.children[0].x + node.width + minDistanceX / 2
+            startY = node.children[0].y + node.height / 2
+            ctx.beginPath();
+            ctx.moveTo(startX, startY);
+            ctx.lineTo(startX, endY);
+            ctx.stroke();
+            // 水平线连接到子节点
+            node.children.forEach(child => {
+              const childY = child.y + child.height / 2
+              startX = child.x + child.width
+              ctx.beginPath();
+              ctx.moveTo(startX, childY);
+              ctx.lineTo(startX + minDistanceX / 2, childY);
+              ctx.stroke();
+              // drawRightTriangle(child.x, childY)
+            })
+
+            // 右侧汇聚线
+            startX = node.children[0].x + node.children[0].width + minDistanceX / 2
+            startY = (node.children[0].y + node.children[node.children.length - 1].y) / 2 + node.height / 2
+            ctx.beginPath();
+            ctx.moveTo(startX, startY);
+            ctx.lineTo(startX + minDistanceX / 2, startY);
+            ctx.stroke();
+            drawRightTriangle(startX + minDistanceX / 2, startY)
+          }
+        } else {
+          var startX = node.x + node.width
+          var startY = node.children[0].y + node.height / 2
+          ctx.beginPath();
+          ctx.moveTo(startX, startY);
+          ctx.lineTo(startX + minDistanceX, startY);
+          ctx.stroke();
+        }
+        if (!isAllComplete && !isError) {
+          drawConnection(node)
+        }
+      } else if (!node.children?.length && node !== completeNode) {
+        var startX = node.x + node.width
+        var startY = node.y + node.height / 2
+        ctx.beginPath();
+        ctx.moveTo(startX, startY);
+        ctx.lineTo(startX + minDistanceX, startY);
+        ctx.stroke();
+        drawRightTriangle(startX + minDistanceX, startY)
+      }
+      nextNode = null
     });
-    console.log(preNodes.map(ele => ele))
   }
 
   // 绘制整个流程图
@@ -508,13 +497,14 @@
     // 清空画布
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // 绘制连接线
-    drawConnections();
 
     // 绘制节点
     flowchartData.children.forEach((node) => {
       drawNode(node);
     });
+
+    // 绘制连接线
+    drawConnections();
   }
 
   // 添加动画循环用于处理中状态的动画效果
