@@ -84,7 +84,7 @@
           },
           {
             nodeLabel: "审核完成1-1",
-            status: NodeStatus.COMPLETED,
+            status: NodeStatus.ERROR,
             children: [],
           },
           {
@@ -99,14 +99,14 @@
         nodeLabel: "呈报任务2",
         status: NodeStatus.COMPLETED,
         children: [
-          // {
-          //   status: NodeStatus.ERROR,
-          //   "nodeLabel": "审核不通过",
-          //   "children": []
-          // },
           {
             status: NodeStatus.ERROR,
             "nodeLabel": "审核不通过",
+            "children": []
+          },
+          {
+            status: NodeStatus.COMPLETED,
+            "nodeLabel": "审核通过",
             "children": []
           },
           {
