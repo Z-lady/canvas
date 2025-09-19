@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Document</title>
+  <style>
+    body {
+      margin: auto;
+      background: #f5f6f8;
+    }
+
+    #container {
+      width: 100%;
+      height: 100vh;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+
+    canvas {
+      border: 1px solid #ddd;
+      background: white;
+      cursor: pointer;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="container">
+    <canvas id="flowchart" width="20000" height="0"></canvas>
+  </div>
+</body>
+<script>
+  const canvas = document.getElementById("flowchart");
+  canvas.height = container.offsetHeight - 40
+  // canvas.width = container.offsetWidth - 40
+  const NodeStatus = {
+    PENDING: 'pending',
+    PROCESSING: 'processing',
+    COMPLETED: 'completed',
+    ERROR: 'error'
+  }
+  const flowchartData = {
+    nodeLabel: "呈报",
+    completeTime: '123',
+    children: [
+      {
+        status: NodeStatus.COMPLETED,
+        nodeLabel: '任务1',
+        children: [
+          {
+            status: NodeStatus.COMPLETED,
+            nodeLabel: '审批1-1',
+            children: [
+              {
+                status: NodeStatus.COMPLETED,
+                nodeLabel: '审批1-1-1',
+                children: [
+                  //   {
+                  //   status: NodeStatus.PROCESSING,
+                  //   nodeLabel: '审批1-1-1',
+                  //   children: [],
+                  // }
+                ],
+              },
+            ],
+          },
+          {
+            status: NodeStatus.COMPLETED,
+            nodeLabel: '审批1-2',
+            children: [
+              // {
+              //   status: NodeStatus.COMPLETED,
+              //   nodeLabel: '审批1-2-1',
+              //   children: [],
+              // }
+            ],
+          },
+          {
+            status: NodeStatus.COMPLETED,
+            nodeLabel: '审批1-3',
+            children: [{
+              status: NodeStatus.ERROR,
+              nodeLabel: '审批1-2-1',
+              children: [],
+            }],
+          }
+        ],
+      },
+      {
+        status: NodeStatus.COMPLETED,
+        nodeLabel: '任务2',
+        children: [
+          {
+            status: NodeStatus.COMPLETED,
+            nodeLabel: '审批2-1',
+            children: [],
+          },
+        ]
+      },
+      // {
+      //   nodeLabel: '完成节点',
+      //   status: NodeStatus.COMPLETED,
+      // },
+    ],
+  };
+  class FlowProcess {
+    #size;
+    #colors;
+    #minDistanceX;
+    #minDistanceY;
+    constructor(id, centerY) {
+      this.NodeStatus = {
+        PENDING: 'pending',
+        PROCESSING: 'processing',
+        COMPLETED: 'completed',
+        ERROR: 'error'
+      };
+      this.#size = {
+        width: 120,
+        height: 40
+      };
+      this.#colors = {
+        [this.NodeStatus.PENDING]: {
+          bg: '#e2e8f0',
+          border: '#94a3b8',
+          text: '#475569'
+        },
+        [this.NodeStatus.PROCESSING]: {
+          bg: '#fef3c7',
+          border: '#f59e0b',
+          text: '#92400e'
+        },
+        [this.NodeStatus.COMPLETED]: {
+          bg: '#d1fae5',
+          border: '#10b981',
+          text: '#065f46'
+        },
+        [this.NodeStatus.ERROR]: { bg: '#fee2e2', border: '#ef4444', text: '#991b1b' }
+      };
+      this.#minDistanceX = 80; // 最小间距
+      this.#minDistanceY = 60; // 最小间距
+      this.maxX = 0;
+      if (id) {
+        this.canvas = document.getElementById(id);
+        this.ctx = this.canvas.getContext('2d');
+      }
+      this.centerY = Math.floor(centerY);
+    }
+
+    drawLineX(startX, startY, endX) {
+      this.ctx.beginPath()
+      this.ctx.moveTo(startX, startY)
+      this.ctx.lineTo(endX, startY)
+      this.ctx.stroke()
+    }
+
+    // 绘制圆角矩形
+    drawRoundedRect(ctx, x, y, width, height, radius) {
+      ctx.beginPath();
+
+      ctx.moveTo(x + radius, y);
+      ctx.lineTo(x + width - radius, y);
+      ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+      ctx.lineTo(x + width, y + height - radius);
+      ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+      ctx.lineTo(x + radius, y + height);
+      ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+      ctx.lineTo(x, y + radius);
+      ctx.quadraticCurveTo(x, y, x + radius, y);
+      ctx.closePath();
+    }
+
+    // 绘制状态指示器
+    drawStatusIndicator(ctx, x, y, status) {
+      const indicatorX = x + 8;
+      const indicatorY = y + 8;
+      const NodeStatus = this.NodeStatus;
+      if (status === NodeStatus.COMPLETED) {
+        ctx.beginPath();
+        ctx.arc(indicatorX, indicatorY, 4, 0, 2 * Math.PI);
+        ctx.fillStyle = '#10b981';
+        ctx.fill();
+
+        // 绘制对勾
+        ctx.strokeStyle = 'white';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(indicatorX - 2, indicatorY);
+        ctx.lineTo(indicatorX, indicatorY + 2);
+        ctx.lineTo(indicatorX + 2, indicatorY - 2);
+        ctx.stroke();
+      } else if (status === NodeStatus.PROCESSING) {
+        ctx.beginPath();
+        ctx.arc(indicatorX, indicatorY, 4, 0, 2 * Math.PI);
+        ctx.fillStyle = '#f59e0b';
+        ctx.fill();
+
+        // 添加旋转动画效果
+        ctx.strokeStyle = '#f59e0b';
+        ctx.lineWidth = 1;
+        const angle = (Date.now() / 100) % (Math.PI * 2);
+        ctx.beginPath();
+        ctx.arc(indicatorX, indicatorY, 6, angle, angle + Math.PI);
+        ctx.stroke();
+      } else if (status === NodeStatus.PENDING) {
+        // ctx.fillStyle = this.#colors[status]
+        // ctx.fill();
+      } else if (status === NodeStatus.ERROR) {
+        ctx.beginPath();
+        ctx.arc(indicatorX, indicatorY, 4, 0, 2 * Math.PI);
+        ctx.fillStyle = '#ef4444';
+        ctx.fill();
+
+        // 绘制对勾
+        ctx.strokeStyle = 'white';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(indicatorX - 2, indicatorY - 2);
+        ctx.lineTo(indicatorX + 2, indicatorY + 2);
+        ctx.moveTo(indicatorX + 2, indicatorY - 2);
+        ctx.lineTo(indicatorX - 2, indicatorY + 2);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    // 绘制背景和边框线
+    drawBackground(ctx, color) {
+      ctx.fillStyle = color.bg;
+      ctx.fill();
+      ctx.strokeStyle = color.border;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+
+    // 绘制文本
+    drawNodeText(node, color) {
+      this.ctx.fillStyle = color.text;
+      this.ctx.font = '12px Microsoft YaHei';
+      this.ctx.textAlign = 'center';
+      this.ctx.textBaseline = 'middle';
+      if (!node.nodeLabel) {
+        return;
+      }
+      const lines = node.nodeLabel.split('\n');
+      const lineHeight = 14;
+      const startY = node.y + node.height / 2 - ((lines.length - 1) * lineHeight) / 2;
+
+      lines.forEach((line, index) => {
+        this.ctx.fillText(line, node.x + node.width / 2, startY + index * lineHeight);
+      });
+    }
+
+    // 确定位置
+    adjustPositions() {
+      const minDistanceY = this.#minDistanceY;
+      const minDistanceX = this.#minDistanceX;
+      var isError = false
+      var nextNodeX = -(this.#size.width + minDistanceX) / 2;
+      function findNextNodeX({ x, y, children }) {
+        var maxX = x
+        const loopX = (children) => {
+          if (children?.length) {
+            children.forEach(child => {
+              maxX = maxX > child.x ? maxX : child.x
+              loopX(child?.children)
+            })
+          } else {
+            return
+          }
+        }
+        loopX(children)
+        return maxX
+      }
+
+      const ctx = this;
+      function adjustPosition(node) {
+        const { x, y, children } = node;
+        if (children?.length) {
+          const isOddLen = (children.length % 2) % 2 !== 0; // 奇数长度
+          const centerIdx = Math.floor(children.length / 2);  // 取中间节点，入3取1
+          isError = isError || children.some(ele => ele.status == ctx.NodeStatus.ERROR || ele.status == ctx.NodeStatus.PENDING)
+          var isComplete = children.every(ele => ele.status == ctx.NodeStatus.COMPLETED) // 所有节点都是完成节点就不会存在下一个版本，只有完成节点
+          children.forEach((child, index) => {
+            child.x = child.width + minDistanceX + x;
+            ctx.maxX = child.x > ctx.maxX ? child.x : ctx.maxX;
+            // 确定Y轴的位置
+            if (index < centerIdx) {
+              // 上部分
+              child.y = y - (child.height + minDistanceY) * (centerIdx - index)
+            } else {
+              // 下部分
+              child.y = y + (child.height + minDistanceY) * (index - centerIdx);
+            }
+            if (!isOddLen) {
+              // 如果长度不是奇数，父节点于中间两个节点中间对齐
+              child.y = child.y + (child.height + minDistanceY) / 2
+            } else {
+              // 如果长度是奇数，中间节点与父节点对齐
+              child.y = index == centerIdx ? y : child.y
+            }
+            adjustPosition(child);
+          });
+        } else {
+          ctx.maxX = ctx.maxX < x ? x : ctx.maxX
+        }
+      }
+      this.maxX = 0;
+      this.flowchartData.children.forEach((node, index) => {
+        node.y = this.centerY - Math.floor(this.#size.height / 2);
+        node.x = nextNodeX + node.width + minDistanceX
+        isError = node.children?.some(ele => ele.status == ctx.NodeStatus.ERROR || ele.status == ctx.NodeStatus.PENDING)
+        adjustPosition(node);
+        nextNodeX = findNextNodeX(node)
+        isError = false
+      });
+      this.maxX = this.maxX + 100 + this.#size.width;
+    }
+
+    // 确定尺寸
+    adjustSize(children) {
+      children.forEach((node, index) => {
+        node.width = this.#size.width;
+        node.height = this.#size.height;
+        if (node.children && node.children.length > 0) {
+          this.adjustSize(node.children);
+        }
+      });
+    }
+
+    // 绘制连接线
+    drawConnections() {
+      const ctx = this.ctx;
+      const that = this
+      const flowchartData = this.flowchartData;
+      const minDistanceX = this.#minDistanceX;
+      const minDistanceY = this.#minDistanceY;
+      const NodeStatus = this.NodeStatus;
+      // 方向向右
+      function drawRightTriangle(x, y) {
+        ctx.fillStyle = '#6b7280';
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x - 5, y - 4);
+        ctx.lineTo(x - 5, y + 4);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      // 方向向上
+      function drawUpTriangle(x, y) {
+        ctx.fillStyle = '#6b7280';
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x - 4, y + 5);
+        ctx.lineTo(x + 4, y + 5);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      // 方向上下
+      function drawDownTriangle(x, y) {
+        ctx.fillStyle = '#6b7280';
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x - 4, y - 5);
+        ctx.lineTo(x + 4, y - 5);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      function drawChildConnection(node, parentNode, nextNode) {
+        const { x, y, children, width, height, nodeLabel, status } = node
+        if (children?.length) {
+          children.forEach(child => {
+            drawChildConnection(child, node, nextNode)
+          })
+        } else {
+          // 任务线
+          if (parentNode.children.length == 1) {
+            let startX = x
+            let startY = y + + that.#size.height / 2
+            let endX = parentNode.x + that.#size.width
+            that.drawLineX(startX, startY, endX)
+            drawRightTriangle(startX, startY, endX)
+            // 结束节点，连接线到下一个版本的节点（完成节点或下一版本节点）
+            if (!children?.length && nextNode) {
+              startX = x + that.#size.width
+              let endX = nextNode.x + that.#size.width / 2
+              let isCenter = y == nextNode.y
+              startY = y + that.#size.height / 2
+              that.drawLineX(startX, startY, endX)
+              if (isCenter) {
+                drawRightTriangle(startX, startY, endX)
+              } else {
+                // // 连接线向右下或右上
+                ctx.beginPath()
+                ctx.moveTo(endX, startY)
+                let isDown = y < nextNode.y
+                let endY = isDown ? nextNode.y : (nextNode.y + that.#size.height)
+                ctx.lineTo(endX, endY)
+                ctx.stroke();
+                isDown ? drawDownTriangle(endX, endY) : drawUpTriangle(endX, endY)
+              }
+            }
+          }
+        }
+      }
+
+      function drawConnection(node, nextNode) {
+        const { x, y, width, height, children, nodeLabel } = node
+        if (children?.length > 1) {
+          // 左侧汇聚线 |
+          let startX = children[0].x - that.#minDistanceX / 2
+          let startY = children[0].y + that.#size.height / 2
+          let endY = children[children.length - 1].y + that.#size.height / 2
+          ctx.beginPath()
+          ctx.moveTo(startX, startY)
+          ctx.lineTo(startX, endY)
+          ctx.stroke();
+
+          // 任务线
+          startX = x + width
+          startY = y + + that.#size.height / 2
+          let endX = startX + that.#minDistanceX / 2
+          ctx.beginPath()
+          ctx.moveTo(startX, startY)
+          ctx.lineTo(endX, startY)
+          ctx.stroke();
+          // 指向线
+          children.forEach(child => {
+            startX = child.x - that.#minDistanceX / 2
+            startY = child.y + that.#size.height / 2
+            endX = child.x
+            ctx.beginPath()
+            ctx.moveTo(startX, startY)
+            ctx.lineTo(endX, startY)
+            ctx.stroke();
+            drawRightTriangle(endX, startY)
+
+            if (isCurrentError) {
+              // 如果当前节点有错误节点，把错误节点，保留意见节点，待审批节点，连接线到下一个版本的始节点(错误节点，保留意见节点，待审批节点不会有子节点)
+              if (child.status == NodeStatus.ERROR || child.status == NodeStatus.PENDING || child.status == NodeStatus.PROCESSING) {
+                startX = child.x + that.#size.width
+                startY = child.y + that.#size.height / 2
+                var isCenter = child.y == nextNode.y
+                // 如果当前节点与下一个节点在同一水平线上，连接线向右
+                endX = isCenter ? nextNode.x : nextNode.x + that.#size.width / 2
+                ctx.beginPath()
+                ctx.moveTo(startX, startY)
+                ctx.lineTo(endX, startY)
+                ctx.stroke();
+                if (isCenter) {
+                  drawRightTriangle(endX, startY)
+                } else {
+                  // 连接线向右下或右上
+                  ctx.beginPath()
+                  ctx.moveTo(endX, startY)
+                  console.log(child.y, nextNode.y)
+                  let isDown = child.y < nextNode.y
+                  let endY = isDown ? nextNode.y : (nextNode.y + that.#size.height)
+                  ctx.lineTo(endX, endY)
+                  ctx.stroke();
+                  isDown ? drawDownTriangle(endX, endY) : drawUpTriangle(endX, endY)
+                }
+              }
+            } else {
+              if (isCurrentComplete && !child.children?.length) {
+                // 如果全部完成了，那就之下没有子节点的节点接线到终节点,有子节点的继续往下走，走到最后没有节点才连接下下一个版本的节点
+                startX = child.x + that.#size.width
+                startY = child.y + that.#size.height / 2
+                let isCenter = child.y == nextNode.y
+                endX = isCenter ? nextNode.x : nextNode.x + that.#size.width / 2
+                that.drawLineX(startX, startY, endX)
+                if (isCenter) {
+                  drawRightTriangle(endX, startY)
+                } else {
+                  // 连接线向右下或右上
+                  ctx.beginPath()
+                  ctx.moveTo(endX, startY)
+                  let isDown = child.y < nextNode.y
+                  let endY = isDown ? nextNode.y : (nextNode.y + that.#size.height)
+                  ctx.lineTo(endX, endY)
+                  ctx.stroke();
+                  isDown ? drawDownTriangle(endX, endY) : drawUpTriangle(endX, endY)
+                }
+              }
+            }
+          })
+        }
+      }
+
+      function findError(children) {
+        var isError = false
+        const findError = (children) => {
+          children.forEach(child => {
+            isError = isError || child.status == NodeStatus.ERROR || child.status == NodeStatus.PENDING
+            if (child.children?.length && !isError) {
+              findError(child.children)
+            }
+          })
+        };
+        findError(children)
+        return isError
+      }
+
+      function findCompltete(children) {
+        var isComplete = children.length > 0
+        const findCompltete = (children) => {
+          children.forEach(child => {
+            isComplete = child.status == NodeStatus.COMPLETED
+            if (child.children?.length && isComplete) {
+              findCompltete(child.children)
+            }
+          })
+        };
+        findCompltete(children)
+        return isComplete
+      }
+
+      const { completeTime, children } = flowchartData
+      const completeNode = completeTime ? children[children.length - 1] : null;
+      const centerY = children[0].y;
+      var isCurrentError = false
+      var isCurrentComplete = false
+      children.forEach((node, index) => {
+        isCurrentError = findError(node.children)
+        isCurrentComplete = findCompltete(node.children)
+        drawConnection(node, children[index + 1])
+        node.children.forEach(child => {
+          drawChildConnection(child, node, children[index + 1])
+        })
+        isCurrentError = false
+      });
+    }
+
+    drawNode(node) {
+      this.ctx.save();
+
+      // 绘制圆角矩形
+      this.drawRoundedRect(this.ctx, node.x, node.y, node.width, node.height, 8);
+
+      // 绘制背景和边框线
+      this.drawBackground(this.ctx, this.#colors[node.status]);
+
+      // 绘制文本
+      this.drawNodeText(node, this.#colors[node.status]);
+
+      // 绘制状态指示器
+      this.drawStatusIndicator(this.ctx, node.x, node.y, node.status);
+      if (node.children?.length) {
+        node.children.forEach((child) => this.drawNode(child));
+      }
+    }
+
+    // 绘制整个流程图
+    drawFlowchart() {
+      // 清空画布
+      this.ctx.clearRect(0, 0, this.canvas.width || 0, this.canvas.height || 0);
+
+      // 绘制节点
+      this.flowchartData.children.forEach((node) => this.drawNode(node));
+
+      // 绘制连接线
+      this.drawConnections();
+    }
+
+    // 添加动画循环用于处理中状态的动画效果
+    animate() {
+      if (JSON.stringify(this.flowchartData).includes(this.NodeStatus.PROCESSING)) {
+        this.drawFlowchart();
+      }
+      requestAnimationFrame(() => this.animate());
+    }
+
+    init(flowchartData) {
+      this.flowchartData = flowchartData;
+      this.adjustSize(this.flowchartData.children);
+      this.adjustPositions();
+    }
+
+    starts() {
+      this.drawFlowchart();
+      // this.animate();
+    }
+  }
+
+  const chat = new FlowProcess('flowchart', canvas.height / 2)
+  chat.init(flowchartData);
+  chat.starts();
+</script>
+
+</html>

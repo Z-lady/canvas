@@ -26,7 +26,6 @@
   3. 是待审批节点
   4. 不通过节点
   <div style="margin: auto; width: 100%">
-
     <canvas id="flowchart" width="1500px" height="700px"></canvas>
   </div>
 </body>
@@ -65,26 +64,27 @@
   };
 
   const flowchartData = {
-    id: "1961335205825216512",
-    prereviewId: "1",
-    prereviewVersion: "1.0",
-    parentId: null,
     nodeLabel: "呈报",
     completeTime: '123',
     children: [
       {
-        id: "1961335205825216513",
-        prereviewId: "1",
-        prereviewVersion: "1.0",
-        contractName: "合同名称",
-        parentId: "1961335205825216512",
-        node: "submitUserTask",
         status: NodeStatus.COMPLETED,
         // nodeLabel: "呈报任务1",
         children: [
           {
             // nodeLabel: "通过1-1",
             status: NodeStatus.COMPLETED,
+            children: [
+              // {
+              //   // nodeLabel: "通过1-1",
+              //   status: NodeStatus.COMPLETED,
+              //   children: [],
+              // },
+            ],
+          },
+          {
+            status: NodeStatus.PROCESSING,
+            // nodeLabel: "审核不通过1-1",
             children: [],
           },
           {
@@ -92,12 +92,6 @@
             // nodeLabel: "审核中1-3",
             children: [],
           },
-          {
-            status: NodeStatus.PROCESSING,
-            // nodeLabel: "审核不通过1-1",
-            children: [],
-          },
-
 
         ],
       },
