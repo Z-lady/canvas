@@ -92,7 +92,13 @@
           {
             status: NodeStatus.COMPLETED,
             nodeLabel: '审批1-3',
-            children: [],
+            children: [
+              {
+                status: NodeStatus.COMPLETED,
+                nodeLabel: '审批1-3-1',
+                children: [],
+              }
+            ],
           }
         ],
       },
@@ -385,6 +391,7 @@
             drawChildConnection(child, node, nextVersionNode)
           })
           // 子节连接完了，把当前接待你连接到父节点
+
           if (parentNode) {
             let startX = x
             let startY = y + that.#size.height / 2
@@ -393,6 +400,7 @@
             drawRightTriangle(startX, startY)
           }
         } else {
+
           // 没有子节点了，说明遍历到最后一个节点了，此时需要把此条审批流程线连接到下一个版本的节点（完成节点或者下一个版本节点【如图1的审批1-1和审批1-2的流程线】）
           if (parentNode) {
             let startX = x
@@ -404,6 +412,7 @@
              * 1. 如果终止节点是审批通过节点，那么连接到完成节点
              * 2. 否则判断是否存在保留意见或者拒绝节点，则连接到下一个版本节点
              */
+            console.log('连接父节点', nodeLabel, parentNode)
             if (status == NodeStatus.COMPLETED) {
               startX = x + that.#size.width
               /**
@@ -442,6 +451,10 @@
                   let endX = completeNode.x + that.#size.width / 2
                   drawLineX(startX, startY, endX)
                   // 方向向上
+                  startX = endX
+                  let endY = completeNode.y + that.#size.height
+                  drawLineY(startX, startY, endY)
+                  drawUpTriangle(startX, endY)
                 }
               }
             }
