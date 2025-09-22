@@ -98,7 +98,6 @@
                 nodeLabel: '审批1-3-1',
                 children: [],
               },
-
             ],
           }
         ],
@@ -116,9 +115,30 @@
             nodeLabel: '审批2-2',
             status: NodeStatus.COMPLETED,
             children: []
-          }
+          },
+          // {
+          //   nodeLabel: '审批2-3',
+          //   status: NodeStatus.ERROR,
+          //   children: []
+          // }
         ]
       },
+      // {
+      //   nodeLabel: '任务3',
+      //   status: NodeStatus.COMPLETED,
+      //   children: [
+      //     {
+      //       nodeLabel: '任务3-1',
+      //       status: NodeStatus.COMPLETED,
+      //       children: []
+      //     },
+      //     // {
+      //     //   nodeLabel: '任务3-2',
+      //     //   status: NodeStatus.COMPLETED,
+      //     //   children: []
+      //     // },
+      //   ]
+      // },
       {
         nodeLabel: '完成节点',
         status: NodeStatus.COMPLETED,
@@ -401,12 +421,12 @@
         that.ctx.stroke()
       }
 
-      function drawChildConnection(node, parentNode, nextVersionNode) {
+      function drawChildConnection(node, parentNode, nextVersionNode, previousSibling) {
         const { x, y, children, width, height, nodeLabel, status } = node
         if (children?.length) {
           // 有子节点，遍历到最后一个子节点，然后将子节点连接到当前节点
           children.forEach((child, index) => {
-            drawChildConnection(child, node, nextVersionNode)
+            drawChildConnection(child, node, nextVersionNode, children[index + 1])
           })
           // 子节连接完了，把当前接待你连接到父节点
           if (parentNode) {
@@ -507,25 +527,34 @@
             }
           } else {
             // 没有子节点（如图1的审批1-3流程线）
-            console.log(nodeLabel)
             if (nextVersionNode) {
               let startX = x + that.#size.width
               let startY = y + that.#size.height / 2
               let endX = nextVersionNode.x + that.#size.width / 2
               let endY = 0
               if (y < nextVersionNode.y) {
-                drawLineX(startX, startY, endX)
-                if (!isConnectToComplete) {
-                  // 向下连接(如果前面的节点已经连接到完成节点了，那么后面的节点就不需要再次向下连接了)
-                  startX = endX
-                  endY = nextVersionNode.y
-                  drawLineY(startX, startY, endY)
-                  drawDownTriangle(endX, endY)
+                if (status == NodeStatus.COMPLETED) {
+                  endX = completeNode ? (completeNode.x + that.#size.width / 2) : endX
+                  drawLineX(startX, startY, endX, status != NodeStatus.COMPLETED)
+                  if (completeNode) {
+                    endY = completeNode.y
+                    drawLineY(endX, startY, endY)
+                    drawDownTriangle(endX, endY)
+                  }
                 }
               } else if (y == nextVersionNode.y) {
-                endX = nextVersionNode.x
-                drawLineX(startX, startY, endX)
-                drawRightTriangle(endX, startY)
+                if (status == NodeStatus.COMPLETED) {
+                  let isNextMatchCompelteNode = nextVersionNode === completeNode
+                  endX = isNextMatchCompelteNode ? completeNode.x : nextVersionNode.x - that.#minDistanceX / 2
+                  drawLineX(startX, startY, endX)
+                  if (isNextMatchCompelteNode) {
+                    drawRightTriangle(endX, startY)
+                  } else {
+                    endY = y - that.#size.height / 2 - that.#minDistanceY
+                    drawLineY(endX, startY, endY)
+                  }
+                }
+
               } else if (y > nextVersionNode.y) {
                 drawLineX(startX, startY, endX)
                 // 向上连接
