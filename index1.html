@@ -372,7 +372,7 @@
       const minDistanceY = this.#minDistanceY;
       const NodeStatus = this.NodeStatus;
       var isConnectToComplete = false;
-      // 方向向右
+      // 向右箭头
       function drawRightTriangle(x, y) {
         ctx.fillStyle = '#6b7280';
         ctx.beginPath();
@@ -383,7 +383,7 @@
         ctx.fill();
       }
 
-      // 方向向上
+      // 向上箭头
       function drawUpTriangle(x, y) {
         ctx.fillStyle = '#6b7280';
         ctx.beginPath();
@@ -394,7 +394,7 @@
         ctx.fill();
       }
 
-      // 方向上下
+      // 向下箭头
       function drawDownTriangle(x, y) {
         ctx.fillStyle = '#6b7280';
         ctx.beginPath();
@@ -421,6 +421,7 @@
         that.ctx.stroke()
       }
 
+      // 子节点相连
       function drawChildConnection(node, parentNode, nextVersionNode, previousSibling) {
         const { x, y, children, width, height, nodeLabel, status } = node
         if (children?.length) {
@@ -581,6 +582,7 @@
         }
       }
 
+      // 版本节点连接子节点
       function drawConnection(node, nextVersionNode) {
         const { x, y, width, height, children, nodeLabel } = node
         if (children?.length > 1) {
@@ -615,6 +617,7 @@
         }
       }
 
+      // 版本节点的子节点是否有存在保留意见或者拒绝
       function findError(children) {
         var isError = false
         const findError = (children) => {
@@ -629,6 +632,7 @@
         return isError
       }
 
+      // 版本节点的子节点是否是全部完成节点
       function findCompltete(children) {
         var isComplete = children?.length > 0
         const findCompltete = (children) => {
