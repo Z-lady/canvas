@@ -56,53 +56,50 @@
               {
                 status: NodeStatus.COMPLETED,
                 nodeLabel: '审批1-1-1',
-                children: [
-                  //   {
-                  //   status: NodeStatus.PROCESSING,
-                  //   nodeLabel: '审批1-1-1',
-                  //   children: [],
-                  // }
+                children: [{
+                  status: NodeStatus.COMPLETED,
+                  nodeLabel: '审批1-1-1-1',
+                  children: [{
+                    status: NodeStatus.COMPLETED,
+                    nodeLabel: '审批1-1-1-1-1',
+                    children: [
+                    ],
+                  }
+                  ],
+                }
                 ],
-              },
+              }
             ],
           },
           {
             status: NodeStatus.COMPLETED,
             nodeLabel: '审批1-2',
             children: [
-              // {
-              //   status: NodeStatus.COMPLETED,
-              //   nodeLabel: '审批1-2-1',
-              //   children: [],
-              // }
+              {
+                status: NodeStatus.COMPLETED,
+                nodeLabel: '审批1-2-1',
+                children: [
+                  {
+                    status: NodeStatus.COMPLETED,
+                    nodeLabel: '审批1-2-1-1',
+                    children: [
+                    ],
+                  }
+                ],
+              }
             ],
           },
           {
             status: NodeStatus.COMPLETED,
             nodeLabel: '审批1-3',
-            children: [{
-              status: NodeStatus.ERROR,
-              nodeLabel: '审批1-2-1',
-              children: [],
-            }],
+            children: [],
           }
         ],
       },
       {
+        nodeLabel: '完成节点',
         status: NodeStatus.COMPLETED,
-        nodeLabel: '任务2',
-        children: [
-          {
-            status: NodeStatus.COMPLETED,
-            nodeLabel: '审批2-1',
-            children: [],
-          },
-        ]
       },
-      // {
-      //   nodeLabel: '完成节点',
-      //   status: NodeStatus.COMPLETED,
-      // },
     ],
   };
   class FlowProcess {
@@ -147,13 +144,6 @@
         this.ctx = this.canvas.getContext('2d');
       }
       this.centerY = Math.floor(centerY);
-    }
-
-    drawLineX(startX, startY, endX) {
-      this.ctx.beginPath()
-      this.ctx.moveTo(startX, startY)
-      this.ctx.lineTo(endX, startY)
-      this.ctx.stroke()
     }
 
     // 绘制圆角矩形
@@ -371,45 +361,121 @@
         ctx.fill();
       }
 
-      function drawChildConnection(node, parentNode, nextNode) {
+      // X轴线
+      function drawLineX(startX, startY, endX) {
+        that.ctx.beginPath()
+        that.ctx.moveTo(startX, startY)
+        that.ctx.lineTo(endX, startY)
+        that.ctx.stroke()
+      }
+
+      // Y轴线
+      function drawLineY(startX, startY, endY) {
+        that.ctx.beginPath()
+        that.ctx.moveTo(startX, startY)
+        that.ctx.lineTo(startX, endY)
+        that.ctx.stroke()
+      }
+
+      function drawChildConnection(node, parentNode, nextVersionNode) {
         const { x, y, children, width, height, nodeLabel, status } = node
         if (children?.length) {
-          children.forEach(child => {
-            drawChildConnection(child, node, nextNode)
+          // 有子节点，遍历到最后一个子节点，然后将子节点连接到当前节点
+          children.forEach((child, index) => {
+            drawChildConnection(child, node, nextVersionNode)
           })
-        } else {
-          // 任务线
-          if (parentNode.children.length == 1) {
+          // 子节连接完了，把当前接待你连接到父节点
+          if (parentNode) {
             let startX = x
-            let startY = y + + that.#size.height / 2
-            let endX = parentNode.x + that.#size.width
-            that.drawLineX(startX, startY, endX)
-            drawRightTriangle(startX, startY, endX)
-            // 结束节点，连接线到下一个版本的节点（完成节点或下一版本节点）
-            if (!children?.length && nextNode) {
+            let startY = y + that.#size.height / 2
+            let endX = parentNode.x + parentNode.width
+            drawLineX(startX, startY, endX)
+            drawRightTriangle(startX, startY)
+          }
+        } else {
+          // 没有子节点了，说明遍历到最后一个节点了，此时需要把此条审批流程线连接到下一个版本的节点（完成节点或者下一个版本节点【如图1的审批1-1和审批1-2的流程线】）
+          if (parentNode) {
+            let startX = x
+            let startY = y + that.#size.height / 2
+            let endX = parentNode.x + parentNode.width
+            drawLineX(startX, startY, endX)
+            drawRightTriangle(startX, startY)
+            /**
+             * 1. 如果终止节点是审批通过节点，那么连接到完成节点
+             * 2. 否则判断是否存在保留意见或者拒绝节点，则连接到下一个版本节点
+             */
+            if (status == NodeStatus.COMPLETED) {
               startX = x + that.#size.width
-              let endX = nextNode.x + that.#size.width / 2
-              let isCenter = y == nextNode.y
-              startY = y + that.#size.height / 2
-              that.drawLineX(startX, startY, endX)
-              if (isCenter) {
-                drawRightTriangle(startX, startY, endX)
-              } else {
-                // // 连接线向右下或右上
-                ctx.beginPath()
-                ctx.moveTo(endX, startY)
-                let isDown = y < nextNode.y
-                let endY = isDown ? nextNode.y : (nextNode.y + that.#size.height)
-                ctx.lineTo(endX, endY)
-                ctx.stroke();
-                isDown ? drawDownTriangle(endX, endY) : drawUpTriangle(endX, endY)
+              /**
+              * 连接到完成节点，下一个版本节点和完成节点永远在中间位置，但是子节点可以在上面或者下面，或者也在中间位置
+              */
+              if (completeNode) {
+                if (y < completeNode.y) {
+                  // 上面
+                  let endX = completeNode.x + that.#size.width / 2
+                  drawLineX(startX, startY, endX)
+                  // 方向向下
+                  startX = endX
+                  let endY = completeNode.y
+                  drawLineY(startX, startY, endY)
+                  drawDownTriangle(startX, endY)
+                } else if (y == completeNode.y) {
+                  /*
+                  *  中间位置
+                  * 1. 如果子节点和完成节点在同一水平位置，并且当前版本没有保留意见或者拒绝节点，那么直接连接到完成节点
+                  * 2. 否则向上连接到上半部分，再向右连接到完成节点（完成节点永远排在最上面先）
+                  */
+                  let endX = completeNode.x
+                  if (isCurrentComplete) {
+                    // 当前版本没有保留意见或者拒绝节点，直接连接到完成节点
+                    drawLineX(startX, startY, endX)
+                    drawRightTriangle(endX, startY)
+                  } else {
+                    // 存在保留意见或者拒绝节点，需要向上连接到上半部分，再向右连接到完成节点
+                    startX = x + that.#size.width / 2
+                    startY = y
+                    endY = y - that.#size.height / 2 - that.#minDistanceY
+                    drawLineY(startX, startY, endY)
+                  }
+                } else if (y > completeNode.y) {
+                  // 下面
+                  let endX = completeNode.x + that.#size.width / 2
+                  drawLineX(startX, startY, endX)
+                  // 方向向上
+                }
+              }
+            }
+          } else {
+            // 没有子节点（如图1的审批1-3流程线）
+            if (nextVersionNode) {
+              let startX = x + that.#size.width
+              let startY = y + that.#size.height / 2
+              let endX = nextVersionNode.x + that.#size.width / 2
+              let endY = 0
+              if (y < nextVersionNode.y) {
+                drawLineX(startX, startY, endX)
+                // 向下连接
+                startX = endX
+                endY = nextVersionNode.y
+                drawLineY(startX, startY, endY)
+                drawDownTriangle(endX, endY)
+              } else if (y == nextVersionNode.y) {
+                endX = nextVersionNode.x
+                drawLineX(startX, startY, endX)
+              } else if (y > nextVersionNode.y) {
+                drawLineX(startX, startY, endX)
+                // 向上连接
+                startX = endX
+                endY = nextVersionNode.y + that.#size.height
+                drawLineY(startX, startY, endY)
+                drawUpTriangle(endX, endY)
               }
             }
           }
         }
       }
 
-      function drawConnection(node, nextNode) {
+      function drawConnection(node, nextVersionNode) {
         const { x, y, width, height, children, nodeLabel } = node
         if (children?.length > 1) {
           // 左侧汇聚线 |
@@ -439,55 +505,6 @@
             ctx.lineTo(endX, startY)
             ctx.stroke();
             drawRightTriangle(endX, startY)
-
-            if (isCurrentError) {
-              // 如果当前节点有错误节点，把错误节点，保留意见节点，待审批节点，连接线到下一个版本的始节点(错误节点，保留意见节点，待审批节点不会有子节点)
-              if (child.status == NodeStatus.ERROR || child.status == NodeStatus.PENDING || child.status == NodeStatus.PROCESSING) {
-                startX = child.x + that.#size.width
-                startY = child.y + that.#size.height / 2
-                var isCenter = child.y == nextNode.y
-                // 如果当前节点与下一个节点在同一水平线上，连接线向右
-                endX = isCenter ? nextNode.x : nextNode.x + that.#size.width / 2
-                ctx.beginPath()
-                ctx.moveTo(startX, startY)
-                ctx.lineTo(endX, startY)
-                ctx.stroke();
-                if (isCenter) {
-                  drawRightTriangle(endX, startY)
-                } else {
-                  // 连接线向右下或右上
-                  ctx.beginPath()
-                  ctx.moveTo(endX, startY)
-                  console.log(child.y, nextNode.y)
-                  let isDown = child.y < nextNode.y
-                  let endY = isDown ? nextNode.y : (nextNode.y + that.#size.height)
-                  ctx.lineTo(endX, endY)
-                  ctx.stroke();
-                  isDown ? drawDownTriangle(endX, endY) : drawUpTriangle(endX, endY)
-                }
-              }
-            } else {
-              if (isCurrentComplete && !child.children?.length) {
-                // 如果全部完成了，那就之下没有子节点的节点接线到终节点,有子节点的继续往下走，走到最后没有节点才连接下下一个版本的节点
-                startX = child.x + that.#size.width
-                startY = child.y + that.#size.height / 2
-                let isCenter = child.y == nextNode.y
-                endX = isCenter ? nextNode.x : nextNode.x + that.#size.width / 2
-                that.drawLineX(startX, startY, endX)
-                if (isCenter) {
-                  drawRightTriangle(endX, startY)
-                } else {
-                  // 连接线向右下或右上
-                  ctx.beginPath()
-                  ctx.moveTo(endX, startY)
-                  let isDown = child.y < nextNode.y
-                  let endY = isDown ? nextNode.y : (nextNode.y + that.#size.height)
-                  ctx.lineTo(endX, endY)
-                  ctx.stroke();
-                  isDown ? drawDownTriangle(endX, endY) : drawUpTriangle(endX, endY)
-                }
-              }
-            }
           })
         }
       }
@@ -495,7 +512,7 @@
       function findError(children) {
         var isError = false
         const findError = (children) => {
-          children.forEach(child => {
+          children?.forEach(child => {
             isError = isError || child.status == NodeStatus.ERROR || child.status == NodeStatus.PENDING
             if (child.children?.length && !isError) {
               findError(child.children)
@@ -507,9 +524,9 @@
       }
 
       function findCompltete(children) {
-        var isComplete = children.length > 0
+        var isComplete = children?.length > 0
         const findCompltete = (children) => {
-          children.forEach(child => {
+          children?.forEach(child => {
             isComplete = child.status == NodeStatus.COMPLETED
             if (child.children?.length && isComplete) {
               findCompltete(child.children)
@@ -529,8 +546,8 @@
         isCurrentError = findError(node.children)
         isCurrentComplete = findCompltete(node.children)
         drawConnection(node, children[index + 1])
-        node.children.forEach(child => {
-          drawChildConnection(child, node, children[index + 1])
+        node.children?.forEach(child => {
+          drawChildConnection(child, null, children[index + 1])
         })
         isCurrentError = false
       });
