@@ -80,7 +80,7 @@
                 nodeLabel: '审批1-2-1',
                 children: [
                   {
-                    status: NodeStatus.COMPLETED,
+                    status: NodeStatus.PROCESSING,
                     nodeLabel: '审批1-2-1-1',
                     children: [
                     ],
@@ -97,7 +97,8 @@
                 status: NodeStatus.ERROR,
                 nodeLabel: '审批1-3-1',
                 children: [],
-              }
+              },
+
             ],
           }
         ],
@@ -111,11 +112,11 @@
             status: NodeStatus.COMPLETED,
             children: []
           },
-          // {
-          //   nodeLabel: '审批2-2',
-          //   status: NodeStatus.COMPLETED,
-          //   children: []
-          // }
+          {
+            nodeLabel: '审批2-2',
+            status: NodeStatus.COMPLETED,
+            children: []
+          }
         ]
       },
       {
