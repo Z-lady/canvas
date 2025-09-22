@@ -94,13 +94,29 @@
             nodeLabel: '审批1-3',
             children: [
               {
-                status: NodeStatus.COMPLETED,
+                status: NodeStatus.ERROR,
                 nodeLabel: '审批1-3-1',
                 children: [],
               }
             ],
           }
         ],
+      },
+      {
+        nodeLabel: '任务2',
+        status: NodeStatus.COMPLETED,
+        children: [
+          {
+            nodeLabel: '审批2-1',
+            status: NodeStatus.COMPLETED,
+            children: []
+          },
+          // {
+          //   nodeLabel: '审批2-2',
+          //   status: NodeStatus.COMPLETED,
+          //   children: []
+          // }
+        ]
       },
       {
         nodeLabel: '完成节点',
@@ -334,6 +350,7 @@
       const minDistanceX = this.#minDistanceX;
       const minDistanceY = this.#minDistanceY;
       const NodeStatus = this.NodeStatus;
+      var isConnectToComplete = false;
       // 方向向右
       function drawRightTriangle(x, y) {
         ctx.fillStyle = '#6b7280';
@@ -391,7 +408,6 @@
             drawChildConnection(child, node, nextVersionNode)
           })
           // 子节连接完了，把当前接待你连接到父节点
-
           if (parentNode) {
             let startX = x
             let startY = y + that.#size.height / 2
@@ -400,7 +416,6 @@
             drawRightTriangle(startX, startY)
           }
         } else {
-
           // 没有子节点了，说明遍历到最后一个节点了，此时需要把此条审批流程线连接到下一个版本的节点（完成节点或者下一个版本节点【如图1的审批1-1和审批1-2的流程线】）
           if (parentNode) {
             let startX = x
@@ -412,12 +427,12 @@
              * 1. 如果终止节点是审批通过节点，那么连接到完成节点
              * 2. 否则判断是否存在保留意见或者拒绝节点，则连接到下一个版本节点
              */
-            console.log('连接父节点', nodeLabel, parentNode)
             if (status == NodeStatus.COMPLETED) {
               startX = x + that.#size.width
               /**
               * 连接到完成节点，下一个版本节点和完成节点永远在中间位置，但是子节点可以在上面或者下面，或者也在中间位置
               */
+
               if (completeNode) {
                 if (y < completeNode.y) {
                   // 上面
@@ -428,6 +443,7 @@
                   let endY = completeNode.y
                   drawLineY(startX, startY, endY)
                   drawDownTriangle(startX, endY)
+                  isConnectToComplete = true
                 } else if (y == completeNode.y) {
                   /*
                   *  中间位置
@@ -439,11 +455,16 @@
                     // 当前版本没有保留意见或者拒绝节点，直接连接到完成节点
                     drawLineX(startX, startY, endX)
                     drawRightTriangle(endX, startY)
+
                   } else {
                     // 存在保留意见或者拒绝节点，需要向上连接到上半部分，再向右连接到完成节点
-                    startX = x + that.#size.width / 2
-                    startY = y
-                    endY = y - that.#size.height / 2 - that.#minDistanceY
+                    startX = x + that.#size.width
+                    startY = y + that.#size.height / 2
+                    endX = nextVersionNode.x - that.#minDistanceX / 2
+                    drawLineX(startX, startY, endX)
+                    // 向上连接
+                    startX = endX
+                    let endY = y - that.#minDistanceY - that.#size.height / 2
                     drawLineY(startX, startY, endY)
                   }
                 } else if (y > completeNode.y) {
@@ -457,9 +478,35 @@
                   drawUpTriangle(startX, endY)
                 }
               }
+            } else {
+              if (isCurrentError) {
+                startX = x + that.#size.width
+                let startY = y + that.#size.height / 2
+                let endX = nextVersionNode.x + that.#size.width / 2
+                if (y < nextVersionNode.y) {
+                  drawLineX(startX, startY, endX)
+                  // 向下连接
+                  startX = endX
+                  let endY = nextVersionNode.y
+                  drawLineY(startX, startY, endY)
+                  drawDownTriangle(endX, endY)
+                } else if (y == nextVersionNode.y) {
+                  endX = nextVersionNode.x
+                  drawLineX(startX, startY, endX)
+                  drawRightTriangle(endX, startY)
+                } else if (y > nextVersionNode.y) {
+                  drawLineX(startX, startY, endX)
+                  // 向上连接
+                  startX = endX
+                  let endY = nextVersionNode.y + that.#size.height
+                  drawLineY(startX, startY, endY)
+                  drawUpTriangle(endX, endY)
+                }
+              }
             }
           } else {
             // 没有子节点（如图1的审批1-3流程线）
+            console.log(nodeLabel)
             if (nextVersionNode) {
               let startX = x + that.#size.width
               let startY = y + that.#size.height / 2
@@ -467,14 +514,17 @@
               let endY = 0
               if (y < nextVersionNode.y) {
                 drawLineX(startX, startY, endX)
-                // 向下连接
-                startX = endX
-                endY = nextVersionNode.y
-                drawLineY(startX, startY, endY)
-                drawDownTriangle(endX, endY)
+                if (!isConnectToComplete) {
+                  // 向下连接(如果前面的节点已经连接到完成节点了，那么后面的节点就不需要再次向下连接了)
+                  startX = endX
+                  endY = nextVersionNode.y
+                  drawLineY(startX, startY, endY)
+                  drawDownTriangle(endX, endY)
+                }
               } else if (y == nextVersionNode.y) {
                 endX = nextVersionNode.x
                 drawLineX(startX, startY, endX)
+                drawRightTriangle(endX, startY)
               } else if (y > nextVersionNode.y) {
                 drawLineX(startX, startY, endX)
                 // 向上连接
@@ -559,8 +609,17 @@
         isCurrentError = findError(node.children)
         isCurrentComplete = findCompltete(node.children)
         drawConnection(node, children[index + 1])
+
         node.children?.forEach(child => {
           drawChildConnection(child, null, children[index + 1])
+          if (node.children.length == 1) {
+            // drawChildConnection没有把子审批连接到当前节点，如果是多个节点，已经在drawConnection实现了，所有还存在只有一个子节点的情况，需要单独处理
+            let startX = node.x + that.#size.width
+            let startY = node.y + that.#size.height / 2
+            let endX = startX + that.#minDistanceX
+            drawLineX(startX, startY, endX)
+            drawRightTriangle(endX, startY)
+          }
         })
         isCurrentError = false
       });
